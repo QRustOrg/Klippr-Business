@@ -1,28 +1,33 @@
+// author: Samuel Bonifacio
+//
+// Wrapper ligero de persistencia clave-valor sobre [SharedPreferences].
+//
+// Guarda el token de sesión más helpers genéricos para flags/preferencias
+// pequeñas. NO es para datos estructurados/pesados — eso corresponde a la
+// futura capa de cache `db`.
+//
+// Uso: llamar [init] una vez al iniciar la app (antes de runApp) para que
+// [token] y los getters síncronos funcionen sin await.
+
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Lightweight key-value persistence wrapper over [SharedPreferences].
-///
-/// Holds the session token plus generic helpers for small flags/preferences.
-/// NOT for structured/heavy data — that belongs in the future `db` cache layer.
-///
-/// Usage: call [init] once at app startup (before runApp) so [token] and the
-/// synchronous getters work without awaiting.
+/// Wrapper de persistencia ligera basado en [SharedPreferences].
 class PrefsHelper {
   PrefsHelper._();
 
-  /// Shared singleton. A custom instance can still be constructed in tests
-  /// via [PrefsHelper.test].
+  /// Singleton compartido. En tests se puede construir una instancia propia
+  /// con [PrefsHelper.test].
   static final PrefsHelper instance = PrefsHelper._();
 
-  /// Test constructor allowing a pre-seeded [SharedPreferences].
+  /// Constructor para tests que permite inyectar un [SharedPreferences].
   PrefsHelper.test(SharedPreferences prefs) : _prefs = prefs;
 
   SharedPreferences? _prefs;
 
-  // Storage keys.
+  // Claves de almacenamiento.
   static const String _kToken = 'session_token';
 
-  /// Loads the underlying store. Safe to call multiple times.
+  /// Carga el almacén subyacente. Seguro llamarlo varias veces.
   Future<void> init() async {
     _prefs ??= await SharedPreferences.getInstance();
   }
@@ -30,21 +35,21 @@ class PrefsHelper {
   SharedPreferences get _store {
     final store = _prefs;
     if (store == null) {
-      throw StateError('PrefsHelper.init() must be called before use.');
+      throw StateError('Debe llamarse PrefsHelper.init() antes de usarlo.');
     }
     return store;
   }
 
-  // --- Session token -------------------------------------------------------
+  // --- Token de sesión -----------------------------------------------------
 
-  /// Current bearer token, or null if not signed in.
+  /// Token bearer actual, o null si no hay sesión iniciada.
   String? get token => _store.getString(_kToken);
 
   Future<void> setToken(String token) => _store.setString(_kToken, token);
 
   Future<void> clearToken() => _store.remove(_kToken);
 
-  // --- Generic helpers -----------------------------------------------------
+  // --- Helpers genéricos ---------------------------------------------------
 
   String? getString(String key) => _store.getString(key);
   Future<void> setString(String key, String value) =>

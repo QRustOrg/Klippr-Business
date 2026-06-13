@@ -1,27 +1,31 @@
+// author: Samuel Bonifacio
+//
+// Resultado tipado de una operación que puede tener éxito con [T] o fallar con
+// un [ApiException]. Permite a los llamadores manejar ambas ramas de forma
+// exhaustiva en vez de lanzar excepciones entre capas.
+
 import '../network/api_exceptions.dart';
 
-/// Typed outcome of an operation that can succeed with [T] or fail with an
-/// [ApiException]. Lets callers handle both branches exhaustively instead of
-/// throwing across layers.
+/// Tipo sellado que representa éxito ([Success]) o fallo ([Failure]).
 sealed class Result<T> {
   const Result();
 
-  /// True when this is a [Success].
+  /// True cuando es un [Success].
   bool get isSuccess => this is Success<T>;
 
-  /// The value on success, or null on failure.
+  /// El valor en caso de éxito, o null en caso de fallo.
   T? get dataOrNull => switch (this) {
         Success<T>(:final data) => data,
         Failure<T>() => null,
       };
 
-  /// The error on failure, or null on success.
+  /// El error en caso de fallo, o null en caso de éxito.
   ApiException? get errorOrNull => switch (this) {
         Success<T>() => null,
         Failure<T>(:final error) => error,
       };
 
-  /// Exhaustively folds both branches into a single value of type [R].
+  /// Reduce ambas ramas de forma exhaustiva a un único valor de tipo [R].
   R when<R>({
     required R Function(T data) onSuccess,
     required R Function(ApiException error) onFailure,
@@ -33,13 +37,13 @@ sealed class Result<T> {
   }
 }
 
-/// Successful outcome carrying [data].
+/// Resultado exitoso que transporta [data].
 class Success<T> extends Result<T> {
   const Success(this.data);
   final T data;
 }
 
-/// Failed outcome carrying a typed [error].
+/// Resultado fallido que transporta un [error] tipado.
 class Failure<T> extends Result<T> {
   const Failure(this.error);
   final ApiException error;

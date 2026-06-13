@@ -1,19 +1,23 @@
-/// Typed API error hierarchy used across the network layer.
-///
-/// Every failed request resolves to one of these subtypes so that BLoCs and
-/// repositories can pattern-match on the concrete error instead of inspecting
-/// raw status codes or string messages.
+// author: Samuel Bonifacio
+//
+// Jerarquía de errores tipados de la API, usada en toda la capa de red.
+//
+// Cada request fallida se resuelve en uno de estos subtipos, de modo que los
+// BLoCs y repositorios puedan hacer pattern-matching sobre el error concreto
+// en lugar de inspeccionar códigos de estado o mensajes crudos.
+
+/// Tipo base sellado para todos los errores de la API.
 sealed class ApiException implements Exception {
   const ApiException(this.message, {this.statusCode});
 
-  /// Human-readable description, safe to surface in the UI.
+  /// Descripción legible, segura para mostrar en la UI.
   final String message;
 
-  /// HTTP status code when the failure originated from a response.
-  /// Null for transport-level failures (no connection, timeout, parse error).
+  /// Código de estado HTTP cuando el fallo viene de una respuesta.
+  /// Null para fallos de transporte (sin conexión, timeout, error de parseo).
   final int? statusCode;
 
-  /// Maps an HTTP status code to its concrete [ApiException] subtype.
+  /// Mapea un código de estado HTTP a su subtipo concreto de [ApiException].
   factory ApiException.fromStatus(int code, String message) {
     return switch (code) {
       400 || 422 => ValidationException(message, statusCode: code),
@@ -29,35 +33,35 @@ sealed class ApiException implements Exception {
   String toString() => '$runtimeType($statusCode): $message';
 }
 
-/// No connectivity / DNS / socket failure before reaching the server.
+/// Sin conectividad / DNS / fallo de socket antes de llegar al servidor.
 class NetworkException extends ApiException {
   const NetworkException([super.message = 'Sin conexión a internet.']);
 }
 
-/// The request exceeded [ApiConfig.timeout].
+/// La solicitud superó [ApiConfig.timeout].
 class TimeoutApiException extends ApiException {
   const TimeoutApiException([super.message = 'La solicitud tardó demasiado.']);
 }
 
-/// 401 — missing or invalid credentials / token.
+/// 401 — credenciales o token ausentes/ inválidos.
 class UnauthorizedException extends ApiException {
   const UnauthorizedException([super.message = 'No autorizado.'])
       : super(statusCode: 401);
 }
 
-/// 403 — authenticated but not allowed.
+/// 403 — autenticado pero sin permiso.
 class ForbiddenException extends ApiException {
   const ForbiddenException([super.message = 'Acceso denegado.'])
       : super(statusCode: 403);
 }
 
-/// 404 — resource not found.
+/// 404 — recurso no encontrado.
 class NotFoundException extends ApiException {
   const NotFoundException([super.message = 'Recurso no encontrado.'])
       : super(statusCode: 404);
 }
 
-/// 400 / 422 — invalid payload. [errors] holds field-level details when present.
+/// 400 / 422 — payload inválido. [errors] guarda el detalle por campo si existe.
 class ValidationException extends ApiException {
   const ValidationException(
     super.message, {
@@ -65,21 +69,21 @@ class ValidationException extends ApiException {
     this.errors,
   });
 
-  /// Optional field -> messages map extracted from the response body.
+  /// Mapa opcional campo -> mensajes extraído del cuerpo de la respuesta.
   final Map<String, dynamic>? errors;
 }
 
-/// 5xx — server-side failure.
+/// 5xx — fallo del lado del servidor.
 class ServerException extends ApiException {
   const ServerException(super.message, {super.statusCode});
 }
 
-/// Response body was not valid JSON when JSON was expected.
+/// El cuerpo de la respuesta no era JSON válido cuando se esperaba JSON.
 class ParseException extends ApiException {
   const ParseException([super.message = 'Respuesta inválida del servidor.']);
 }
 
-/// Any status code not covered by the cases above.
+/// Cualquier código de estado no cubierto por los casos anteriores.
 class UnknownApiException extends ApiException {
   const UnknownApiException(super.message, {super.statusCode});
 }

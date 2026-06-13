@@ -1,36 +1,40 @@
-/// Target backend environment.
+// author: Samuel Bonifacio
+//
+// Configuración central de red: URLs base por entorno, timeouts y construcción
+// de URIs. Acepta paths arbitrarios porque la API de Klippr no es consistente
+// (`/api/...`, `/api/v1/Favorites`, casing mixto); el llamador pasa el path
+// completo y esta clase solo antepone el host.
+
+/// Entorno de backend objetivo.
 enum Environment { dev, staging, prod }
 
-/// Central network configuration: base URLs per environment, timeouts and
-/// URI building. Accepts arbitrary paths because the Klippr API is not
-/// consistent (`/api/...`, `/api/v1/Favorites`, mixed casing), so callers pass
-/// the full path and this class only prepends the host.
+/// Configuración de red de la aplicación.
 class ApiConfig {
   const ApiConfig._();
 
-  /// Active environment.
+  /// Entorno activo.
   ///
-  /// To override at build time without editing code, switch to:
-  ///   `--dart-define=ENV=dev|staging|prod` and read it via
+  /// Para sobreescribir en tiempo de build sin editar código, cambiar a:
+  ///   `--dart-define=ENV=dev|staging|prod` y leerlo con
   ///   `String.fromEnvironment('ENV')`.
   static const Environment current = Environment.prod;
 
   static const Map<Environment, String> _baseUrls = {
-    // Android emulator loopback to host machine.
+    // Loopback del emulador Android hacia la máquina host.
     Environment.dev: 'http://10.0.2.2:5000',
     Environment.staging: 'https://klippr-backend-staging.up.railway.app',
     Environment.prod: 'https://klippr-backend-production.up.railway.app',
   };
 
-  /// Base host (scheme + authority) for the active environment.
+  /// Host base (esquema + autoridad) para el entorno activo.
   static String get baseUrl => _baseUrls[current]!;
 
-  /// Per-request timeout applied by the client.
+  /// Timeout por request aplicado por el cliente.
   static const Duration timeout = Duration(seconds: 30);
 
-  /// Builds a [Uri] from an arbitrary [path] (e.g. `/api/promotions/active`)
-  /// plus optional [query] params. Query values are stringified; null values
-  /// are dropped.
+  /// Construye un [Uri] a partir de un [path] arbitrario
+  /// (ej. `/api/promotions/active`) más [query] params opcionales. Los valores
+  /// del query se convierten a string; los valores null se descartan.
   static Uri uri(String path, [Map<String, dynamic>? query]) {
     final normalizedPath = path.startsWith('/') ? path : '/$path';
     final base = Uri.parse('$baseUrl$normalizedPath');
