@@ -22,6 +22,8 @@ class PromotionsService {
   Future<Result<dynamic>> getByBusiness(String businessId) =>
       _api.get('$_base/businesses/$businessId');
 
+  Future<Result<dynamic>> getActive() => _api.get('$_base/active');
+
   Future<Result<dynamic>> getById(String id) => _api.get('$_base/$id');
 
   Future<Result<dynamic>> update(String id, UpdatePromotionRequest body) =>

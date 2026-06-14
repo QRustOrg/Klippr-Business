@@ -9,6 +9,7 @@ import '../bloc/promotions_bloc.dart';
 import '../bloc/promotions_event.dart';
 import '../bloc/promotions_state.dart';
 import '../models/promotion.dart';
+import 'active_promotions_screen.dart';
 import 'promo_colors.dart';
 
 // author: Samuel Bonifacio
@@ -24,13 +25,9 @@ import 'promo_colors.dart';
 enum _PromotionCategory {
   general('General'),
   food('Comida'),
-  beauty('Belleza'),
   health('Salud'),
-  education('Educación'),
   entertainment('Entretenimiento'),
-  sports('Deportes'),
-  services('Servicios'),
-  technology('Tecnología');
+  sports('Deportes');
 
   const _PromotionCategory(this.label);
   final String label;
@@ -88,6 +85,18 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
   bool _dateError = false;
 
   bool get _isEdit => widget.promotion != null;
+
+  void _openActivePromotions() {
+    final bloc = context.read<PromotionsBloc>();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BlocProvider.value(
+          value: bloc,
+          child: const ActivePromotionsScreen(),
+        ),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -234,7 +243,7 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
           current: KlipprTab.qr,
           onQr: () {},
           onInicio: () => Navigator.of(context).maybePop(),
-          onMiLista: () {},
+          onMiLista: _openActivePromotions,
         ),
         body: ListView(
           padding: const EdgeInsets.only(bottom: 24),

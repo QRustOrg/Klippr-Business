@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../core/prefs/prefs_helper.dart';
 import '../../core/widgets/klippr_field.dart';
 import '../../promotions/views/business_home_screen.dart';
 import '../bloc/auth_bloc.dart';
@@ -30,6 +31,12 @@ class _SignInScreenState extends State<SignInScreen> {
   bool _rememberMe = false;
 
   @override
+  void initState() {
+    super.initState();
+    _loadRememberedUser();
+  }
+
+  @override
   void dispose() {
     _email.dispose();
     _password.dispose();
@@ -45,6 +52,28 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 
+  Future<void> _loadRememberedUser() async {
+    final prefs = PrefsHelper.instance;
+    final remember = prefs.rememberMe;
+    final email = prefs.rememberedEmail;
+    if (!mounted) return;
+    setState(() {
+      _rememberMe = remember;
+      if (remember && email != null && email.isNotEmpty) {
+        _email.text = email;
+      }
+    });
+  }
+
+  Future<void> _syncRememberedUser() async {
+    final prefs = PrefsHelper.instance;
+    if (_rememberMe) {
+      await prefs.setRememberedUser(email: _email.text);
+    } else {
+      await prefs.clearRememberedUser();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -52,6 +81,8 @@ class _SignInScreenState extends State<SignInScreen> {
       body: BlocConsumer<AuthBloc, AuthState>(
         listener: (context, state) async {
           if (state.isAuthenticated) {
+            await _syncRememberedUser();
+            if (!context.mounted) return;
             Navigator.of(context).pushReplacement(
               MaterialPageRoute(builder: (_) => const BusinessHomeScreen()),
             );

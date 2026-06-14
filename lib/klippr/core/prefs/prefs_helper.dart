@@ -27,6 +27,8 @@ class PrefsHelper {
   // Claves de almacenamiento.
   static const String _kToken = 'session_token';
   static const String _kUserId = 'user_id';
+  static const String _kRememberMe = 'remember_me';
+  static const String _kRememberedEmail = 'remembered_email';
 
   /// Carga el almacén subyacente. Seguro llamarlo varias veces.
   Future<void> init() async {
@@ -58,6 +60,22 @@ class PrefsHelper {
   Future<void> setUserId(String id) => _store.setString(_kUserId, id);
 
   Future<void> clearUserId() => _store.remove(_kUserId);
+
+  // --- Usuario recordado ---------------------------------------------------
+
+  bool get rememberMe => _store.getBool(_kRememberMe) ?? false;
+
+  String? get rememberedEmail => _store.getString(_kRememberedEmail);
+
+  Future<void> setRememberedUser({required String email}) async {
+    await _store.setBool(_kRememberMe, true);
+    await _store.setString(_kRememberedEmail, email.trim());
+  }
+
+  Future<void> clearRememberedUser() async {
+    await _store.setBool(_kRememberMe, false);
+    await _store.remove(_kRememberedEmail);
+  }
 
   // --- Helpers genéricos ---------------------------------------------------
 

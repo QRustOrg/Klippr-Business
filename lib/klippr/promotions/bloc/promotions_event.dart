@@ -14,6 +14,17 @@ class LoadPromotions extends PromotionsEvent {
   const LoadPromotions();
 }
 
+/// Carga promociones activas del negocio autenticado.
+class LoadActivePromotions extends PromotionsEvent {
+  const LoadActivePromotions();
+}
+
+/// Obtiene una promocion fresca antes de abrir edicion.
+class FetchPromotionForEdit extends PromotionsEvent {
+  const FetchPromotionForEdit(this.id);
+  final String id;
+}
+
 /// Crea una promoción.
 class CreatePromotion extends PromotionsEvent {
   const CreatePromotion({
@@ -79,4 +90,9 @@ class CancelPromotion extends PromotionsEvent {
 /// Limpia el error/flag de acción del estado.
 class PromotionsFlagsConsumed extends PromotionsEvent {
   const PromotionsFlagsConsumed();
+}
+
+/// Limpia la promocion fresca usada para abrir edicion.
+class PromotionEditConsumed extends PromotionsEvent {
+  const PromotionEditConsumed();
 }

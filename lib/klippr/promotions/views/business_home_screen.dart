@@ -7,6 +7,7 @@ import '../bloc/promotions_bloc.dart';
 import '../bloc/promotions_event.dart';
 import '../bloc/promotions_state.dart';
 import '../models/promotion.dart';
+import 'active_promotions_screen.dart';
 import 'create_promotion_screen.dart';
 import 'promo_colors.dart';
 
@@ -38,6 +39,32 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
         builder: (_) => BlocProvider.value(
           value: bloc,
           child: CreatePromotionScreen(promotion: promotion),
+        ),
+      ),
+    );
+  }
+
+  void _requestEdit(Promotion promotion) {
+    final bloc = context.read<PromotionsBloc>();
+    if (bloc.state.isFetchingPromotion || bloc.state.actionInProgress) return;
+    if (promotion.status != PromotionStatus.draft || promotion.isExpired) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Solo puedes editar promociones en borrador.'),
+        ),
+      );
+      return;
+    }
+    bloc.add(FetchPromotionForEdit(promotion.id));
+  }
+
+  void _openActivePromotions() {
+    final bloc = context.read<PromotionsBloc>();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BlocProvider.value(
+          value: bloc,
+          child: const ActivePromotionsScreen(),
         ),
       ),
     );
@@ -83,6 +110,19 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
                   context.read<PromotionsBloc>().add(
                         const PromotionsFlagsConsumed(),
                       );
+                } else if (state.actionMessage != null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(state.actionMessage!)),
+                  );
+                  context.read<PromotionsBloc>().add(
+                        const PromotionsFlagsConsumed(),
+                      );
+                } else if (state.promotionToEdit != null) {
+                  final promotion = state.promotionToEdit!;
+                  context.read<PromotionsBloc>().add(
+                        const PromotionEditConsumed(),
+                      );
+                  _openCreate(promotion: promotion);
                 }
               },
               builder: (context, state) {
@@ -127,30 +167,42 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
                           ...state.promotions.map(
                             (p) => Padding(
                               padding: const EdgeInsets.only(bottom: 12),
-                              child: _PromotionCard(
-                                promotion: p,
-                                onEdit: () => _openCreate(promotion: p),
-                                onPublish: () => context
-                                    .read<PromotionsBloc>()
-                                    .add(PublishPromotion(p.id)),
-                                onCancel: () async {
-                                  if (await _confirm('Cancelar promoción',
-                                      '¿Cancelar "${p.title}"?')) {
-                                    if (!context.mounted) return;
-                                    context
-                                        .read<PromotionsBloc>()
-                                        .add(CancelPromotion(p.id));
-                                  }
-                                },
-                                onDelete: () async {
-                                  if (await _confirm('Eliminar promoción',
-                                      '¿Eliminar "${p.title}"? No se puede deshacer.')) {
-                                    if (!context.mounted) return;
-                                    context
-                                        .read<PromotionsBloc>()
-                                        .add(DeletePromotion(p.id));
-                                  }
-                                },
+                              child: GestureDetector(
+                                onDoubleTap: () => _requestEdit(p),
+                                child: _PromotionCard(
+                                  promotion: p,
+                                  onEdit: () => _requestEdit(p),
+                                  onPublish: () async {
+                                    if (state.actionInProgress) return;
+                                    if (await _confirm('Publicar promocion',
+                                        '¿Publicar "${p.title}"?')) {
+                                      if (!context.mounted) return;
+                                      context
+                                          .read<PromotionsBloc>()
+                                          .add(PublishPromotion(p.id));
+                                    }
+                                  },
+                                  onCancel: () async {
+                                    if (state.actionInProgress) return;
+                                    if (await _confirm('Cancelar promocion',
+                                        '¿Cancelar "${p.title}"?')) {
+                                      if (!context.mounted) return;
+                                      context
+                                          .read<PromotionsBloc>()
+                                          .add(CancelPromotion(p.id));
+                                    }
+                                  },
+                                  onDelete: () async {
+                                    if (state.actionInProgress) return;
+                                    if (await _confirm('Eliminar promocion',
+                                        '¿Eliminar "${p.title}"? No se puede deshacer.')) {
+                                      if (!context.mounted) return;
+                                      context
+                                          .read<PromotionsBloc>()
+                                          .add(DeletePromotion(p.id));
+                                    }
+                                  },
+                                ),
                               ),
                             ),
                           ),
@@ -168,7 +220,7 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
         current: KlipprTab.inicio,
         onQr: () => _openCreate(),
         onInicio: () {},
-        onMiLista: () {},
+        onMiLista: _openActivePromotions,
       ),
     );
   }
