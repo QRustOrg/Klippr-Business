@@ -62,3 +62,8 @@ class ResetFlagsConsumed extends AuthEvent {
 class ErrorConsumed extends AuthEvent {
   const ErrorConsumed();
 }
+
+/// Limpia el flag de bloqueo de customer tras mostrar el modal.
+class CustomerBlockConsumed extends AuthEvent {
+  const CustomerBlockConsumed();
+}

@@ -30,7 +30,6 @@ class KlipprBusinessApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Cadena de dependencias (ApiClient compartido).
     final apiClient = ApiClient();
     final iamRepository = IamRepository(IamService(apiClient));
     final promotionsRepository =
@@ -46,7 +45,6 @@ class KlipprBusinessApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Klippr Business',
         debugShowCheckedModeBanner: false,
-        // La app fuerza el tema claro (identidad visual de Klippr).
         theme: AppTheme.light,
         home: const SignInScreen(),
       ),

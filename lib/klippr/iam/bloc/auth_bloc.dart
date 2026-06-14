@@ -1,5 +1,6 @@
 import 'package:bloc/bloc.dart';
 
+import '../models/auth_response.dart';
 import '../repository/iam_repository.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
@@ -18,9 +19,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<ResetPasswordRequested>(_onResetPassword);
     on<ResetFlagsConsumed>(_onConsumeFlags);
     on<ErrorConsumed>(_onConsumeError);
+    on<CustomerBlockConsumed>(_onConsumeCustomerBlock);
   }
 
   final IamRepository _repo;
+
+  /// Solo se bloquea el rol CONSUMER; BUSINESS y ADMIN entran.
+  bool _isAllowed(String role) => role.toUpperCase() != 'CONSUMER';
 
   Future<void> _onSignIn(SignInRequested e, Emitter<AuthState> emit) async {
     if (e.email.trim().isEmpty || e.password.isEmpty) {
@@ -29,9 +34,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
     emit(state.copyWith(isLoading: true, error: null));
     final res = await _repo.signIn(e.email, e.password);
-    res.when(
-      onSuccess: (user) => emit(state.copyWith(isLoading: false, user: user)),
-      onFailure: (err) => emit(state.copyWith(
+    await res.when(
+      onSuccess: (user) => _onAuthSuccess(user, emit),
+      onFailure: (err) async => emit(state.copyWith(
         isLoading: false,
         error: err.message,
       )),
@@ -56,13 +61,31 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       businessName: e.businessName,
       taxId: e.taxId,
     );
-    res.when(
-      onSuccess: (user) => emit(state.copyWith(isLoading: false, user: user)),
-      onFailure: (err) => emit(state.copyWith(
+    await res.when(
+      onSuccess: (user) => _onAuthSuccess(user, emit),
+      onFailure: (err) async => emit(state.copyWith(
         isLoading: false,
         error: err.message,
       )),
     );
+  }
+
+  /// Maneja un login/registro exitoso: si el rol no está permitido (CONSUMER),
+  /// cierra la sesión y gatilla el modal; si está permitido, fija el usuario.
+  Future<void> _onAuthSuccess(
+    AuthenticatedUser user,
+    Emitter<AuthState> emit,
+  ) async {
+    if (!_isAllowed(user.role)) {
+      await _repo.signOut();
+      emit(state.copyWith(
+        isLoading: false,
+        user: null,
+        customerBlocked: true,
+      ));
+      return;
+    }
+    emit(state.copyWith(isLoading: false, user: user));
   }
 
   Future<void> _onVerifyEmail(
@@ -131,5 +154,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   void _onConsumeError(ErrorConsumed e, Emitter<AuthState> emit) {
     emit(state.copyWith(error: null));
+  }
+
+  void _onConsumeCustomerBlock(
+    CustomerBlockConsumed e,
+    Emitter<AuthState> emit,
+  ) {
+    emit(state.copyWith(customerBlocked: false));
   }
 }

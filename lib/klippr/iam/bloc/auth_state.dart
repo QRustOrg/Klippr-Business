@@ -16,6 +16,7 @@ class AuthState {
     this.forgotEmail,
     this.emailVerified = false,
     this.resetSuccess = false,
+    this.customerBlocked = false,
   });
 
   final bool isLoading;
@@ -27,6 +28,9 @@ class AuthState {
   final bool emailVerified; // gatilla navegación a la pantalla de reset
   final bool resetSuccess; // gatilla volver a SignIn tras cambiar la contraseña
 
+  /// True cuando un rol CONSUMER intentó entrar → gatilla el modal de bloqueo.
+  final bool customerBlocked;
+
   bool get isAuthenticated => user != null;
 
   AuthState copyWith({
@@ -36,6 +40,7 @@ class AuthState {
     Object? forgotEmail = _unset,
     bool? emailVerified,
     bool? resetSuccess,
+    bool? customerBlocked,
   }) {
     return AuthState(
       isLoading: isLoading ?? this.isLoading,
@@ -45,6 +50,7 @@ class AuthState {
           forgotEmail == _unset ? this.forgotEmail : forgotEmail as String?,
       emailVerified: emailVerified ?? this.emailVerified,
       resetSuccess: resetSuccess ?? this.resetSuccess,
+      customerBlocked: customerBlocked ?? this.customerBlocked,
     );
   }
 }

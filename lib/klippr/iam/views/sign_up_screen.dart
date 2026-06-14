@@ -88,6 +88,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       value: _businessName.text,
                       onChanged: (_) {},
                       label: 'Business Name',
+                      hint: 'Ej: Pizzería Don Mario',
                     ),
                     const SizedBox(height: 16),
                     KlipprField(
@@ -95,6 +96,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       value: _taxId.text,
                       onChanged: (_) {},
                       label: 'Tax ID',
+                      hint: 'Ej: 20123456789',
                       keyboardType: TextInputType.number,
                     ),
                     const SizedBox(height: 16),

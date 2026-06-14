@@ -7,6 +7,7 @@ import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
 import 'auth_colors.dart';
+import 'customer_blocked_dialog.dart';
 import 'forgot_password_screen.dart';
 import 'sign_up_screen.dart';
 
@@ -49,11 +50,17 @@ class _SignInScreenState extends State<SignInScreen> {
     return Scaffold(
       backgroundColor: AuthColors.screenBg,
       body: BlocConsumer<AuthBloc, AuthState>(
-        listener: (context, state) {
+        listener: (context, state) async {
           if (state.isAuthenticated) {
             Navigator.of(context).pushReplacement(
               MaterialPageRoute(builder: (_) => const BusinessHomeScreen()),
             );
+          } else if (state.customerBlocked) {
+            context.read<AuthBloc>().add(const CustomerBlockConsumed());
+            final goSignUp = await showCustomerBlockedDialog(context);
+            if (goSignUp && context.mounted) {
+              _pushShared(const SignUpScreen());
+            }
           }
         },
         builder: (context, state) {

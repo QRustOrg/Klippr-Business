@@ -20,6 +20,7 @@ class KlipprField extends StatelessWidget {
     required this.value,
     required this.onChanged,
     required this.label,
+    this.hint,
     this.isPassword = false,
     this.keyboardType = TextInputType.text,
     this.controller,
@@ -28,6 +29,9 @@ class KlipprField extends StatelessWidget {
   final String value;
   final ValueChanged<String> onChanged;
   final String label;
+
+  /// Ejemplo opcional mostrado dentro del campo (placeholder).
+  final String? hint;
   final bool isPassword;
   final TextInputType keyboardType;
 
@@ -56,6 +60,11 @@ class KlipprField extends StatelessWidget {
       cursorColor: _fieldButtonPurple,
       decoration: InputDecoration(
         labelText: label,
+        hintText: hint,
+        hintStyle: const TextStyle(fontSize: 14, color: _fieldTextGray),
+        // Con ejemplo, el label queda siempre arriba para no tapar el hint.
+        floatingLabelBehavior:
+            hint != null ? FloatingLabelBehavior.always : FloatingLabelBehavior.auto,
         labelStyle: const TextStyle(fontSize: 14, color: _fieldTextGray),
         floatingLabelStyle: const TextStyle(color: _fieldButtonPurple),
         filled: true,
