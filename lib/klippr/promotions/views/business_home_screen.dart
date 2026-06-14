@@ -369,8 +369,6 @@ class _StatCard extends StatelessWidget {
 }
 
 /// Acciones disponibles según el estado de la promoción.
-enum _PromoAction { editar, publicar, cancelar, eliminar }
-
 class _PromotionCard extends StatelessWidget {
   const _PromotionCard({
     required this.promotion,
@@ -386,12 +384,18 @@ class _PromotionCard extends StatelessWidget {
   final VoidCallback onCancel;
   final VoidCallback onDelete;
 
-  Color get _statusColor => switch (promotion.status) {
-        PromotionStatus.published => PromoColors.statGreenIcon,
-        PromotionStatus.draft => PromoColors.purpleText,
-        PromotionStatus.cancelled => PromoColors.errorRed,
-        PromotionStatus.expired => PromoColors.statAmberIcon,
-        PromotionStatus.unknown => PromoColors.textGray,
+  bool get _isExpired => promotion.isExpired;
+  bool get _canEdit => promotion.status == PromotionStatus.draft && !_isExpired;
+  bool get _canPublish =>
+      promotion.status == PromotionStatus.draft && !_isExpired;
+  bool get _canCancel =>
+      promotion.status == PromotionStatus.published && !_isExpired;
+
+  String get _statusLabel => switch (promotion.status) {
+        _ when _isExpired => PromotionStatus.expired.label,
+        PromotionStatus.published =>
+          promotion.isActive ? 'Activa' : promotion.status.label,
+        _ => promotion.status.label,
       };
 
   @override
@@ -399,94 +403,304 @@ class _PromotionCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.18),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  promotion.title,
-                  maxLines: 2,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  promotion.title.toUpperCase(),
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 16,
+                    fontSize: 28,
                     fontWeight: FontWeight.bold,
-                    color: PromoColors.textDark,
+                    color: PromoColors.purpleText,
+                    letterSpacing: 0,
                   ),
                 ),
-                const SizedBox(height: 8),
-                Row(
+              ),
+              const SizedBox(width: 12),
+              _PromotionStatusPill(
+                label: _statusLabel,
+                status: promotion.status,
+                isActive: promotion.isActive,
+                isExpired: _isExpired,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            promotion.description,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 16,
+              height: 1.25,
+              color: PromoColors.textDark,
+              letterSpacing: 0,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 14,
+            runSpacing: 8,
+            children: [
+              _PromotionMetaChip(
+                label: _redemptionCapLabel(promotion.redemptionCap),
+                background: const Color(0xFFF5C5F4),
+                foreground: const Color(0xFFA855B4),
+              ),
+              _PromotionMetaChip(
+                label: _dateRangeLabel(promotion.startDate, promotion.endDate),
+                background: PromoColors.statBlueBg,
+                foreground: const Color(0xFF587A9C),
+              ),
+              _PromotionMetaChip(
+                label: promotion.discountLabel,
+                background: const Color(0xFFFBF7C5),
+                foreground: const Color(0xFF9A9350),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Divider(
+            color: Color(0xFFEDE5F1),
+            height: 1,
+            thickness: 2,
+            indent: 18,
+            endIndent: 18,
+          ),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: PromoColors.purple,
-                        borderRadius: BorderRadius.circular(50),
-                      ),
-                      child: Text(
-                        promotion.discountLabel,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                        ),
+                    Text(
+                      promotion.id.isEmpty ? 'PROMOCION' : promotion.id,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black,
+                        letterSpacing: 0,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(height: 4),
                     Text(
-                      promotion.status.label,
-                      style: TextStyle(
-                        color: _statusColor,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                      'Vence: ${_formatFullDate(promotion.endDate)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Colors.black,
+                        letterSpacing: 0,
                       ),
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
-          PopupMenuButton<_PromoAction>(
-            icon: const Icon(Icons.more_vert, color: PromoColors.textGray),
-            onSelected: (a) {
-              switch (a) {
-                case _PromoAction.editar:
-                  onEdit();
-                case _PromoAction.publicar:
-                  onPublish();
-                case _PromoAction.cancelar:
-                  onCancel();
-                case _PromoAction.eliminar:
-                  onDelete();
-              }
-            },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: _PromoAction.editar, child: Text('Editar')),
-              PopupMenuItem(
-                  value: _PromoAction.publicar, child: Text('Publicar')),
-              PopupMenuItem(
-                  value: _PromoAction.cancelar, child: Text('Cancelar')),
-              PopupMenuItem(
-                  value: _PromoAction.eliminar, child: Text('Eliminar')),
+              ),
+              const SizedBox(width: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.end,
+                children: [
+                  if (_canEdit)
+                    _PromotionIconButton(
+                      icon: Icons.edit_outlined,
+                      color: Colors.blue,
+                      tooltip: 'Editar promocion',
+                      onPressed: onEdit,
+                    ),
+                  if (_canPublish)
+                    _PromotionIconButton(
+                      icon: Icons.publish_outlined,
+                      color: PromoColors.statGreenIcon,
+                      tooltip: 'Publicar promocion',
+                      onPressed: onPublish,
+                    ),
+                  if (_canCancel)
+                    _PromotionIconButton(
+                      icon: Icons.cancel_outlined,
+                      color: PromoColors.statAmberIcon,
+                      tooltip: 'Cancelar promocion',
+                      onPressed: onCancel,
+                    ),
+                  _PromotionIconButton(
+                    icon: Icons.delete_outline,
+                    color: PromoColors.errorRed,
+                    tooltip: 'Eliminar promocion',
+                    onPressed: onDelete,
+                  ),
+                ],
+              ),
             ],
           ),
         ],
       ),
     );
   }
+}
+
+class _PromotionStatusPill extends StatelessWidget {
+  const _PromotionStatusPill({
+    required this.label,
+    required this.status,
+    required this.isActive,
+    required this.isExpired,
+  });
+
+  final String label;
+  final PromotionStatus status;
+  final bool isActive;
+  final bool isExpired;
+
+  Color get _background => switch (status) {
+        _ when isExpired => PromoColors.statAmberBg,
+        PromotionStatus.published when isActive => PromoColors.statGreenBg,
+        PromotionStatus.published => PromoColors.statBlueBg,
+        PromotionStatus.draft => PromoColors.statPurpleBg,
+        PromotionStatus.cancelled => const Color(0xFFFFD6D2),
+        PromotionStatus.expired => PromoColors.statAmberBg,
+        PromotionStatus.unknown => const Color(0xFFEAEAEA),
+      };
+
+  Color get _foreground => switch (status) {
+        _ when isExpired => const Color(0xFFC97900),
+        PromotionStatus.published when isActive => const Color(0xFF009B55),
+        PromotionStatus.published => PromoColors.statBlueIcon,
+        PromotionStatus.draft => PromoColors.purpleText,
+        PromotionStatus.cancelled => PromoColors.errorRed,
+        PromotionStatus.expired => const Color(0xFFC97900),
+        PromotionStatus.unknown => PromoColors.textGray,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
+      decoration: BoxDecoration(
+        color: _background,
+        borderRadius: BorderRadius.circular(50),
+      ),
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          color: _foreground,
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 0,
+        ),
+      ),
+    );
+  }
+}
+
+class _PromotionMetaChip extends StatelessWidget {
+  const _PromotionMetaChip({
+    required this.label,
+    required this.background,
+    required this.foreground,
+  });
+
+  final String label;
+  final Color background;
+  final Color foreground;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(50),
+      ),
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          color: foreground,
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          letterSpacing: 0,
+        ),
+      ),
+    );
+  }
+}
+
+class _PromotionIconButton extends StatelessWidget {
+  const _PromotionIconButton({
+    required this.icon,
+    required this.color,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.square(
+      dimension: 38,
+      child: IconButton(
+        onPressed: onPressed,
+        padding: EdgeInsets.zero,
+        tooltip: tooltip,
+        icon: Icon(icon, color: color, size: 30),
+      ),
+    );
+  }
+}
+
+String _redemptionCapLabel(int? redemptionCap) {
+  if (redemptionCap == null || redemptionCap <= 0) return 'sin limite';
+  return '$redemptionCap unid.';
+}
+
+String _dateRangeLabel(DateTime? start, DateTime? end) {
+  if (start == null && end == null) return 'sin fecha';
+  if (start == null) return 'hasta ${_formatShortDate(end)}';
+  if (end == null) return 'desde ${_formatShortDate(start)}';
+  return '${_formatShortDate(start)} al ${_formatShortDate(end)}';
+}
+
+String _formatShortDate(DateTime? date) {
+  if (date == null) return '--/--';
+  final dd = date.day.toString().padLeft(2, '0');
+  final mm = date.month.toString().padLeft(2, '0');
+  return '$dd/$mm';
+}
+
+String _formatFullDate(DateTime? date) {
+  if (date == null) return '--/--/----';
+  final dd = date.day.toString().padLeft(2, '0');
+  final mm = date.month.toString().padLeft(2, '0');
+  final yyyy = date.year.toString().padLeft(4, '0');
+  return '$dd/$mm/$yyyy';
 }
 
 class _EmptyPromotions extends StatelessWidget {
