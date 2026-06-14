@@ -8,6 +8,9 @@ import 'package:klippr/klippr/iam/bloc/auth_bloc.dart';
 import 'package:klippr/klippr/iam/repository/iam_repository.dart';
 import 'package:klippr/klippr/iam/services/iam_service.dart';
 import 'package:klippr/klippr/iam/views/sign_in_screen.dart';
+import 'package:klippr/klippr/promotions/bloc/promotions_bloc.dart';
+import 'package:klippr/klippr/promotions/repository/promotions_repository.dart';
+import 'package:klippr/klippr/promotions/services/promotions_service.dart';
 
 // author: Samuel Bonifacio
 //
@@ -27,12 +30,19 @@ class KlipprBusinessApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Cadena de dependencias de autenticación.
+    // Cadena de dependencias (ApiClient compartido).
     final apiClient = ApiClient();
     final iamRepository = IamRepository(IamService(apiClient));
+    final promotionsRepository =
+        PromotionsRepository(PromotionsService(apiClient));
 
-    return BlocProvider<AuthBloc>(
-      create: (_) => AuthBloc(iamRepository),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<AuthBloc>(create: (_) => AuthBloc(iamRepository)),
+        BlocProvider<PromotionsBloc>(
+          create: (_) => PromotionsBloc(promotionsRepository),
+        ),
+      ],
       child: MaterialApp(
         title: 'Klippr Business',
         debugShowCheckedModeBanner: false,

@@ -26,6 +26,7 @@ class PrefsHelper {
 
   // Claves de almacenamiento.
   static const String _kToken = 'session_token';
+  static const String _kUserId = 'user_id';
 
   /// Carga el almacén subyacente. Seguro llamarlo varias veces.
   Future<void> init() async {
@@ -48,6 +49,15 @@ class PrefsHelper {
   Future<void> setToken(String token) => _store.setString(_kToken, token);
 
   Future<void> clearToken() => _store.remove(_kToken);
+
+  // --- Id de usuario / negocio --------------------------------------------
+
+  /// Id del usuario autenticado (usado como businessId en Promotions).
+  String? get userId => _store.getString(_kUserId);
+
+  Future<void> setUserId(String id) => _store.setString(_kUserId, id);
+
+  Future<void> clearUserId() => _store.remove(_kUserId);
 
   // --- Helpers genéricos ---------------------------------------------------
 

@@ -75,14 +75,20 @@ class IamRepository {
     );
   }
 
-  /// Cierra sesión: borra el token persistido.
-  Future<void> signOut() => _prefs.clearToken();
+  /// Cierra sesión: borra el token y el id persistidos.
+  Future<void> signOut() async {
+    await _prefs.clearToken();
+    await _prefs.clearUserId();
+  }
 
   Future<Result<AuthenticatedUser>> _persistAndReturn(
     AuthenticatedUser user,
   ) async {
     if (user.token.isNotEmpty) {
       await _prefs.setToken(user.token);
+    }
+    if (user.userId.isNotEmpty) {
+      await _prefs.setUserId(user.userId);
     }
     return Success<AuthenticatedUser>(user);
   }
