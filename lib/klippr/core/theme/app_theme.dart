@@ -1,3 +1,8 @@
+import 'package:flutter/material.dart';
+
+import 'app_colors.dart';
+import 'app_typography.dart';
+
 // author: Samuel Bonifacio
 //
 // Tema de Klippr. Portado desde el proyecto Android (ui/theme/Theme.kt).
@@ -6,11 +11,6 @@
 // La app fuerza el tema claro (fondo blanco en todas las pantallas), igual que
 // `KlipprTheme(darkTheme = false)` en Kotlin. El color dinámico de Material You
 // queda deshabilitado para preservar la identidad visual de Klippr.
-
-import 'package:flutter/material.dart';
-
-import 'app_colors.dart';
-import 'app_typography.dart';
 
 /// Construye los [ThemeData] de la aplicación.
 class AppTheme {

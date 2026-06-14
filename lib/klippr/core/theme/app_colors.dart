@@ -1,9 +1,9 @@
+import 'package:flutter/material.dart';
+
 // author: Samuel Bonifacio
 //
 // Paleta de colores de Klippr. Portada exactamente desde el proyecto Android
 // (ui/theme/Color.kt). Los valores ARGB son idénticos a los de Kotlin.
-
-import 'package:flutter/material.dart';
 
 /// Colores de marca y tonos auxiliares de Klippr.
 class AppColors {

@@ -1,3 +1,5 @@
+import 'package:shared_preferences/shared_preferences.dart';
+
 // author: Samuel Bonifacio
 //
 // Wrapper ligero de persistencia clave-valor sobre [SharedPreferences].
@@ -8,8 +10,6 @@
 //
 // Uso: llamar [init] una vez al iniciar la app (antes de runApp) para que
 // [token] y los getters síncronos funcionen sin await.
-
-import 'package:shared_preferences/shared_preferences.dart';
 
 /// Wrapper de persistencia ligera basado en [SharedPreferences].
 class PrefsHelper {

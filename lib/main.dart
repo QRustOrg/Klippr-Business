@@ -1,12 +1,12 @@
-// author: Samuel Bonifacio
-//
-// Punto de entrada de la app Klippr Business. Inicializa la persistencia ligera
-// y aplica el tema de marca (claro) definido en core/theme.
-
 import 'package:flutter/material.dart';
 
 import 'package:klippr/klippr/core/prefs/prefs_helper.dart';
 import 'package:klippr/klippr/core/theme/app_theme.dart';
+
+// author: Samuel Bonifacio
+//
+// Punto de entrada de la app Klippr Business. Inicializa la persistencia ligera
+// y aplica el tema de marca (claro) definido en core/theme.
 
 Future<void> main() async {
   // Necesario antes de usar plugins (shared_preferences) previo a runApp.

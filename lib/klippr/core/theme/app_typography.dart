@@ -1,10 +1,10 @@
+import 'package:flutter/material.dart';
+
 // author: Samuel Bonifacio
 //
 // Tipografía de Klippr. Portada desde el proyecto Android (ui/theme/Type.kt).
 // Mantiene el estilo base bodyLarge con los mismos valores (16sp, line-height
 // 24sp -> height 1.5, letterSpacing 0.5).
-
-import 'package:flutter/material.dart';
 
 /// Estilos de texto base de la app.
 class AppTypography {

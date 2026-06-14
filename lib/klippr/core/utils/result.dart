@@ -1,10 +1,10 @@
+import '../network/api_exceptions.dart';
+
 // author: Samuel Bonifacio
 //
 // Resultado tipado de una operación que puede tener éxito con [T] o fallar con
 // un [ApiException]. Permite a los llamadores manejar ambas ramas de forma
 // exhaustiva en vez de lanzar excepciones entre capas.
-
-import '../network/api_exceptions.dart';
 
 /// Tipo sellado que representa éxito ([Success]) o fallo ([Failure]).
 sealed class Result<T> {
