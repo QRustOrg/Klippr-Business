@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../core/widgets/klippr_field.dart';
-import '../../navigation/home_placeholder.dart';
+import '../../promotions/views/business_home_screen.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
@@ -52,7 +52,7 @@ class _SignInScreenState extends State<SignInScreen> {
         listener: (context, state) {
           if (state.isAuthenticated) {
             Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const HomePlaceholderScreen()),
+              MaterialPageRoute(builder: (_) => const BusinessHomeScreen()),
             );
           }
         },

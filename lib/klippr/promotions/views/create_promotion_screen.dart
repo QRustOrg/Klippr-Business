@@ -1,0 +1,639 @@
+import 'dart:math';
+
+import 'package:flutter/material.dart';
+
+import '../../core/widgets/dashed_border.dart';
+import '../../core/widgets/klippr_bottom_bar.dart';
+import 'promo_colors.dart';
+
+// author: Samuel Bonifacio
+//
+// Formulario de creación de promoción ("+ QR"). Port 1:1 de
+// CreatePromotionScreen.kt: información, condiciones de uso, código QR y
+// acciones. El botón "Crear" valida título/descripción y vuelve (sin POST,
+// igual que el original).
+
+/// Categorías de promoción (displayName en español).
+enum _PromotionCategory {
+  general('General'),
+  food('Comida'),
+  beauty('Belleza'),
+  health('Salud'),
+  education('Educación'),
+  entertainment('Entretenimiento'),
+  sports('Deportes'),
+  services('Servicios'),
+  technology('Tecnología');
+
+  const _PromotionCategory(this.label);
+  final String label;
+}
+
+/// Tipos de condición de uso.
+enum _ConditionType {
+  usageLimit('Límite total de usos'),
+  minPurchase('Monto Mínimo de Compra'),
+  validationHours('Horario de validación'),
+  validDays('Días de la semana válidos'),
+  validBranches('Sucursales válidas'),
+  newClients('Nuevos clientes');
+
+  const _ConditionType(this.label);
+  final String label;
+}
+
+class _Condition {
+  _Condition();
+  _ConditionType? type;
+  String value = '';
+}
+
+String _generateQrCode() {
+  const hex = '0123456789ABCDEFabcdef';
+  final rnd = Random();
+  final code = List.generate(12, (_) => hex[rnd.nextInt(hex.length)]).join();
+  return 'PROM$code';
+}
+
+/// Pantalla de creación de promoción.
+class CreatePromotionScreen extends StatefulWidget {
+  const CreatePromotionScreen({super.key});
+
+  @override
+  State<CreatePromotionScreen> createState() => _CreatePromotionScreenState();
+}
+
+class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
+  final _title = TextEditingController();
+  final _description = TextEditingController();
+  final _discount = TextEditingController();
+  final _endDate = TextEditingController();
+
+  _PromotionCategory _category = _PromotionCategory.general;
+  final List<_Condition> _conditions = [];
+  String _qrCode = _generateQrCode();
+
+  bool _titleError = false;
+  bool _descriptionError = false;
+
+  @override
+  void dispose() {
+    _title.dispose();
+    _description.dispose();
+    _discount.dispose();
+    _endDate.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: now,
+      firstDate: now,
+      lastDate: DateTime(now.year + 5),
+    );
+    if (picked != null) {
+      final dd = picked.day.toString().padLeft(2, '0');
+      final mm = picked.month.toString().padLeft(2, '0');
+      final yy = (picked.year % 100).toString().padLeft(2, '0');
+      _endDate.text = '$dd/$mm/$yy';
+    }
+  }
+
+  void _onCreate() {
+    final titleOk = _title.text.trim().isNotEmpty;
+    final descOk = _description.text.trim().isNotEmpty;
+    if (titleOk && descOk) {
+      Navigator.of(context).maybePop();
+    } else {
+      setState(() {
+        _titleError = !titleOk;
+        _descriptionError = !descOk;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: PromoColors.screenBg,
+      appBar: AppBar(
+        backgroundColor: PromoColors.purple,
+        centerTitle: true,
+        leading: IconButton(
+          onPressed: () => Navigator.of(context).maybePop(),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          tooltip: 'Volver',
+        ),
+        title: const Text(
+          '+ QR',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 22,
+          ),
+        ),
+      ),
+      bottomNavigationBar: KlipprBottomBar(
+        current: KlipprTab.qr,
+        onQr: () {},
+        onInicio: () => Navigator.of(context).maybePop(),
+        onMiLista: () {},
+      ),
+      body: ListView(
+        padding: const EdgeInsets.only(bottom: 24),
+        children: [
+          const _SectionHeader(title: 'Información de la Promocion'),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _FieldLabel('Titulo de la Promoción *', isError: _titleError),
+                _PromoField(
+                  controller: _title,
+                  hint: 'Ej: 2x1 en todas las pizzas',
+                  isError: _titleError,
+                  onChanged: (_) {
+                    if (_titleError) setState(() => _titleError = false);
+                  },
+                ),
+                const SizedBox(height: 16),
+                _FieldLabel('Descripción *', isError: _descriptionError),
+                _PromoField(
+                  controller: _description,
+                  hint: 'Describe los detalles de la promoción...',
+                  isError: _descriptionError,
+                  minLines: 4,
+                  maxLines: 6,
+                  onChanged: (_) {
+                    if (_descriptionError) {
+                      setState(() => _descriptionError = false);
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const _FieldLabel('Descuento *'),
+                          _PromoField(
+                            controller: _discount,
+                            hint: 'Ej: 50% OFF',
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const _FieldLabel('Categoría *'),
+                          _CategoryDropdown(
+                            value: _category,
+                            onChanged: (c) => setState(() => _category = c),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const _FieldLabel('Fecho de Expiración *'),
+                _PromoField(
+                  controller: _endDate,
+                  hint: 'dd/mm/yy',
+                  readOnly: true,
+                  onTap: _pickDate,
+                  suffixIcon: const Icon(Icons.calendar_month,
+                      color: PromoColors.textGray),
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+          _SectionHeader(
+            title: 'Condiciones de Uso',
+            action: ElevatedButton.icon(
+              onPressed: () => setState(() => _conditions.add(_Condition())),
+              icon: const Icon(Icons.add, color: Colors.white, size: 16),
+              label: const Text(
+                'Agregar',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: PromoColors.purple,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                minimumSize: const Size(0, 36),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(50),
+                ),
+              ),
+            ),
+          ),
+          if (_conditions.isEmpty)
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: DashedBorder(
+                color: PromoColors.dash,
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: Center(
+                    child: Text(
+                      'No hay condiciones ¡Agregar algunas!',
+                      style: TextStyle(fontSize: 14, color: Color(0xFF666666)),
+                    ),
+                  ),
+                ),
+              ),
+            )
+          else
+            ..._conditions.asMap().entries.map(
+                  (e) => Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 4),
+                    child: _ConditionRow(
+                      item: e.value,
+                      onTypeChange: (t) => setState(() => e.value.type = t),
+                      onValueChange: (v) => e.value.value = v,
+                      onDelete: () =>
+                          setState(() => _conditions.removeAt(e.key)),
+                    ),
+                  ),
+                ),
+          const SizedBox(height: 8),
+          const _SectionHeader(title: 'Codigo QR'),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _QrSection(
+              qrCode: _qrCode,
+              onRefresh: () => setState(() => _qrCode = _generateQrCode()),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(context).maybePop(),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(0, 52),
+                      side: const BorderSide(
+                          color: PromoColors.purple, width: 1.5),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(50),
+                      ),
+                    ),
+                    child: const Text(
+                      'Cancelar',
+                      style: TextStyle(
+                        color: Color(0xFFCCAACF),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _onCreate,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: PromoColors.purple,
+                      minimumSize: const Size(0, 52),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(50),
+                      ),
+                    ),
+                    child: const Text(
+                      'Crear',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({required this.title, this.action});
+
+  final String title;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 4,
+                height: 22,
+                decoration: BoxDecoration(
+                  color: PromoColors.purple,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: PromoColors.purple,
+                ),
+              ),
+            ],
+          ),
+          ?action,
+        ],
+      ),
+    );
+  }
+}
+
+class _FieldLabel extends StatelessWidget {
+  const _FieldLabel(this.text, {this.isError = false});
+
+  final String text;
+  final bool isError;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 6),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+          color: isError ? PromoColors.errorRed : PromoColors.purple,
+        ),
+      ),
+    );
+  }
+}
+
+/// Campo de formulario con fondo lavanda (estilo Klippr).
+class _PromoField extends StatelessWidget {
+  const _PromoField({
+    required this.controller,
+    required this.hint,
+    this.isError = false,
+    this.minLines = 1,
+    this.maxLines = 1,
+    this.readOnly = false,
+    this.onTap,
+    this.onChanged,
+    this.suffixIcon,
+  });
+
+  final TextEditingController controller;
+  final String hint;
+  final bool isError;
+  final int minLines;
+  final int maxLines;
+  final bool readOnly;
+  final VoidCallback? onTap;
+  final ValueChanged<String>? onChanged;
+  final Widget? suffixIcon;
+
+  @override
+  Widget build(BuildContext context) {
+    OutlineInputBorder border(Color color) => OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: color),
+        );
+
+    return TextField(
+      controller: controller,
+      readOnly: readOnly,
+      onTap: onTap,
+      onChanged: onChanged,
+      minLines: minLines,
+      maxLines: maxLines,
+      style: const TextStyle(color: PromoColors.textDark, fontSize: 14),
+      cursorColor: PromoColors.purple,
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(color: PromoColors.textGray, fontSize: 14),
+        filled: true,
+        fillColor: PromoColors.fieldBg,
+        suffixIcon: suffixIcon,
+        border: border(Colors.transparent),
+        enabledBorder:
+            border(isError ? PromoColors.errorRed : Colors.transparent),
+        focusedBorder:
+            border(isError ? PromoColors.errorRed : PromoColors.purple),
+      ),
+    );
+  }
+}
+
+class _CategoryDropdown extends StatelessWidget {
+  const _CategoryDropdown({required this.value, required this.onChanged});
+
+  final _PromotionCategory value;
+  final ValueChanged<_PromotionCategory> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: PromoColors.fieldBg,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<_PromotionCategory>(
+          value: value,
+          isExpanded: true,
+          icon: const Icon(Icons.keyboard_arrow_down,
+              color: PromoColors.textGray),
+          style: const TextStyle(color: PromoColors.textDark, fontSize: 14),
+          onChanged: (c) {
+            if (c != null) onChanged(c);
+          },
+          items: _PromotionCategory.values
+              .map((c) => DropdownMenuItem(value: c, child: Text(c.label)))
+              .toList(),
+        ),
+      ),
+    );
+  }
+}
+
+class _ConditionRow extends StatelessWidget {
+  const _ConditionRow({
+    required this.item,
+    required this.onTypeChange,
+    required this.onValueChange,
+    required this.onDelete,
+  });
+
+  final _Condition item;
+  final ValueChanged<_ConditionType> onTypeChange;
+  final ValueChanged<String> onValueChange;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return DashedBorder(
+      color: PromoColors.dash,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.black12),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<_ConditionType>(
+                        value: item.type,
+                        isExpanded: true,
+                        hint: const Text('Elige una opcion',
+                            style: TextStyle(fontSize: 13)),
+                        style: const TextStyle(
+                            color: PromoColors.textDark, fontSize: 13),
+                        onChanged: (t) {
+                          if (t != null) onTypeChange(t);
+                        },
+                        items: _ConditionType.values
+                            .map((t) => DropdownMenuItem(
+                                value: t, child: Text(t.label)))
+                            .toList(),
+                      ),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: onDelete,
+                  icon: const Icon(Icons.delete,
+                      color: PromoColors.errorRed, size: 22),
+                  tooltip: 'Eliminar condición',
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              enabled: item.type != null,
+              onChanged: onValueChange,
+              style: const TextStyle(fontSize: 13),
+              decoration: InputDecoration(
+                hintText: 'Valor...',
+                hintStyle:
+                    const TextStyle(fontSize: 12, color: PromoColors.textGray),
+                filled: true,
+                fillColor: const Color(0xFFF5F5F5),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Colors.black12),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Colors.black12),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: PromoColors.purple),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QrSection extends StatelessWidget {
+  const _QrSection({required this.qrCode, required this.onRefresh});
+
+  final String qrCode;
+  final VoidCallback onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: PromoColors.lavender,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Stack(
+        children: [
+          Column(
+            children: [
+              Material(
+                elevation: 2,
+                borderRadius: BorderRadius.circular(16),
+                color: Colors.white,
+                child: const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Icon(Icons.qr_code_2, color: Colors.black, size: 160),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                qrCode,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: Colors.black,
+                ),
+              ),
+            ],
+          ),
+          Align(
+            alignment: Alignment.topRight,
+            child: Container(
+              decoration:
+                  const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+              child: IconButton(
+                onPressed: onRefresh,
+                iconSize: 16,
+                constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+                padding: EdgeInsets.zero,
+                icon: const Icon(Icons.refresh, color: PromoColors.textGray),
+                tooltip: 'Regenerar QR',
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
