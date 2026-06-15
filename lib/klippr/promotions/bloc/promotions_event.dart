@@ -34,6 +34,7 @@ class CreatePromotion extends PromotionsEvent {
     required this.discountType,
     required this.startDate,
     required this.endDate,
+    required this.imageKey,
     this.redemptionCap,
   });
 
@@ -43,6 +44,7 @@ class CreatePromotion extends PromotionsEvent {
   final DiscountType discountType;
   final DateTime startDate;
   final DateTime endDate;
+  final String imageKey;
   final int? redemptionCap;
 }
 
@@ -56,6 +58,7 @@ class UpdatePromotion extends PromotionsEvent {
     required this.discountType,
     required this.startDate,
     required this.endDate,
+    required this.imageKey,
     this.redemptionCap,
   });
 
@@ -66,6 +69,7 @@ class UpdatePromotion extends PromotionsEvent {
   final DiscountType discountType;
   final DateTime startDate;
   final DateTime endDate;
+  final String imageKey;
   final int? redemptionCap;
 }
 

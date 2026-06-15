@@ -64,6 +64,7 @@ class PromotionsRepository {
     required DiscountType discountType,
     required DateTime startDate,
     required DateTime endDate,
+    required String imageKey,
     int? redemptionCap,
   }) async {
     final id = businessId;
@@ -79,6 +80,7 @@ class PromotionsRepository {
         discountType: discountType,
         startDate: startDate,
         endDate: endDate,
+        imageKey: imageKey,
         redemptionCap: redemptionCap,
       ),
     );
@@ -100,6 +102,7 @@ class PromotionsRepository {
     required DiscountType discountType,
     required DateTime startDate,
     required DateTime endDate,
+    required String imageKey,
     int? redemptionCap,
   }) async {
     final res = await _service.update(
@@ -111,6 +114,7 @@ class PromotionsRepository {
         discountType: discountType,
         startDate: startDate,
         endDate: endDate,
+        imageKey: imageKey,
         redemptionCap: redemptionCap,
       ),
     );

@@ -6,6 +6,7 @@ import '../bloc/promotions_bloc.dart';
 import '../bloc/promotions_event.dart';
 import '../bloc/promotions_state.dart';
 import '../models/promotion.dart';
+import '../models/promotion_image_catalog.dart';
 import 'create_promotion_screen.dart';
 import 'promo_colors.dart';
 
@@ -211,6 +212,7 @@ class _ActivePromotionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final image = PromotionImageCatalog.byKey(promotion.imageKey);
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -248,6 +250,27 @@ class _ActivePromotionCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Image.asset(
+                image.assetPath,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const DecoratedBox(
+                  decoration: BoxDecoration(color: PromoColors.fieldBg),
+                  child: Center(
+                    child: Icon(
+                      Icons.image_outlined,
+                      color: PromoColors.purple,
+                      size: 42,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
           Text(
             promotion.description,
             maxLines: 3,

@@ -9,6 +9,7 @@ import '../bloc/promotions_bloc.dart';
 import '../bloc/promotions_event.dart';
 import '../bloc/promotions_state.dart';
 import '../models/promotion.dart';
+import '../models/promotion_image_catalog.dart';
 import 'active_promotions_screen.dart';
 import 'promo_colors.dart';
 
@@ -31,6 +32,14 @@ enum _PromotionCategory {
 
   const _PromotionCategory(this.label);
   final String label;
+
+  String get key => switch (this) {
+        _PromotionCategory.general => 'general',
+        _PromotionCategory.food => 'food',
+        _PromotionCategory.health => 'health',
+        _PromotionCategory.entertainment => 'entertainment',
+        _PromotionCategory.sports => 'sports',
+      };
 }
 
 /// Tipos de condición de uso.
@@ -58,6 +67,13 @@ String _generateQrCode() {
   return 'PROM$code';
 }
 
+_PromotionCategory _categoryFromKey(String categoryKey) {
+  for (final category in _PromotionCategory.values) {
+    if (category.key == categoryKey) return category;
+  }
+  return _PromotionCategory.general;
+}
+
 /// Pantalla de creación/edición de promoción.
 class CreatePromotionScreen extends StatefulWidget {
   const CreatePromotionScreen({super.key, this.promotion});
@@ -76,6 +92,7 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
   final _endDate = TextEditingController();
 
   _PromotionCategory _category = _PromotionCategory.general;
+  PromotionImageOption? _selectedImage;
   final List<_Condition> _conditions = [];
   String _qrCode = _generateQrCode();
   DateTime? _endDateValue;
@@ -83,6 +100,7 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
   bool _titleError = false;
   bool _descriptionError = false;
   bool _dateError = false;
+  bool _imageError = false;
 
   bool get _isEdit => widget.promotion != null;
 
@@ -106,6 +124,8 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
       _title.text = p.title;
       _description.text = p.description;
       _discount.text = p.discountLabel;
+      _selectedImage = PromotionImageCatalog.byKey(p.imageKey);
+      _category = _categoryFromKey(_selectedImage!.categoryKey);
       if (p.endDate != null) {
         _endDateValue = p.endDate;
         _endDate.text = _formatDate(p.endDate!);
@@ -164,15 +184,51 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
     return null;
   }
 
+  void _onCategoryChanged(_PromotionCategory category) {
+    final current = _selectedImage;
+    setState(() {
+      _category = category;
+      if (current == null || current.categoryKey != category.key) {
+        _selectedImage = null;
+      }
+      _imageError = false;
+    });
+  }
+
+  Future<void> _pickPromotionImage() async {
+    final options = PromotionImageCatalog.byCategory(_category.key);
+    final selected = await showModalBottomSheet<PromotionImageOption>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => _PromotionImagePickerSheet(
+        categoryLabel: _category.label,
+        options: options,
+        selectedKey: _selectedImage?.key,
+      ),
+    );
+    if (selected != null) {
+      setState(() {
+        _selectedImage = selected;
+        _imageError = false;
+      });
+    }
+  }
+
   void _submit() {
     final titleOk = _title.text.trim().isNotEmpty;
     final descOk = _description.text.trim().isNotEmpty;
     final dateOk = _endDateValue != null;
-    if (!titleOk || !descOk || !dateOk) {
+    final imageOk = _selectedImage != null;
+    if (!titleOk || !descOk || !dateOk || !imageOk) {
       setState(() {
         _titleError = !titleOk;
         _descriptionError = !descOk;
         _dateError = !dateOk;
+        _imageError = !imageOk;
       });
       return;
     }
@@ -191,6 +247,7 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
         discountType: DiscountType.percentage,
         startDate: widget.promotion!.startDate ?? start,
         endDate: _endDateValue!,
+        imageKey: _selectedImage!.key,
         redemptionCap: cap,
       ));
     } else {
@@ -201,6 +258,7 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
         discountType: DiscountType.percentage,
         startDate: start,
         endDate: _endDateValue!,
+        imageKey: _selectedImage!.key,
         redemptionCap: cap,
       ));
     }
@@ -301,7 +359,7 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                             const _FieldLabel('Categoría *'),
                             _CategoryDropdown(
                               value: _category,
-                              onChanged: (c) => setState(() => _category = c),
+                              onChanged: _onCategoryChanged,
                             ),
                           ],
                         ),
@@ -318,6 +376,12 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                     onTap: _pickDate,
                     suffixIcon: const Icon(Icons.calendar_month,
                         color: PromoColors.textGray),
+                  ),
+                  const SizedBox(height: 8),
+                  _PromotionImageSelector(
+                    selected: _selectedImage,
+                    isError: _imageError,
+                    onTap: _pickPromotionImage,
                   ),
                   const SizedBox(height: 8),
                 ],
@@ -608,6 +672,261 @@ class _CategoryDropdown extends StatelessWidget {
               .map((c) => DropdownMenuItem(value: c, child: Text(c.label)))
               .toList(),
         ),
+      ),
+    );
+  }
+}
+
+class _PromotionImageSelector extends StatelessWidget {
+  const _PromotionImageSelector({
+    required this.selected,
+    required this.isError,
+    required this.onTap,
+  });
+
+  final PromotionImageOption? selected;
+  final bool isError;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final image = selected;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _FieldLabel('Imagen promocional *', isError: isError),
+        Material(
+          color: PromoColors.fieldBg,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isError ? PromoColors.errorRed : Colors.transparent,
+                  width: 1.5,
+                ),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  AspectRatio(
+                    aspectRatio: 16 / 9,
+                    child: image == null
+                        ? const _ImagePlaceholder()
+                        : Image.asset(
+                            image.assetPath,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) =>
+                                const _ImagePlaceholder(),
+                          ),
+                  ),
+                  Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            image?.label ?? 'Elige una imagen',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: image == null
+                                  ? PromoColors.textGray
+                                  : PromoColors.textDark,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Icon(
+                          Icons.grid_view_rounded,
+                          color: PromoColors.purple,
+                          size: 20,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (isError)
+          const Padding(
+            padding: EdgeInsets.only(left: 4, top: 6),
+            child: Text(
+              'Selecciona una imagen para la promocion',
+              style: TextStyle(
+                color: PromoColors.errorRed,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _PromotionImagePickerSheet extends StatelessWidget {
+  const _PromotionImagePickerSheet({
+    required this.categoryLabel,
+    required this.options,
+    required this.selectedKey,
+  });
+
+  final String categoryLabel;
+  final List<PromotionImageOption> options;
+  final String? selectedKey;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: SizedBox(
+        height: MediaQuery.sizeOf(context).height * 0.72,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 10),
+            Center(
+              child: Container(
+                width: 42,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD7D0DD),
+                  borderRadius: BorderRadius.circular(50),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
+              child: Text(
+                'Imagenes de $categoryLabel',
+                style: const TextStyle(
+                  color: PromoColors.purple,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            Expanded(
+              child: GridView.builder(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 0.94,
+                ),
+                itemCount: options.length,
+                itemBuilder: (context, index) {
+                  final option = options[index];
+                  final selected = option.key == selectedKey;
+                  return _PromotionImageTile(
+                    option: option,
+                    selected: selected,
+                    onTap: () => Navigator.of(context).pop(option),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PromotionImageTile extends StatelessWidget {
+  const _PromotionImageTile({
+    required this.option,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final PromotionImageOption option;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: PromoColors.fieldBg,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: selected ? PromoColors.purple : Colors.transparent,
+              width: 2,
+            ),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: Image.asset(
+                  option.assetPath,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const _ImagePlaceholder(),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        option.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: PromoColors.textDark,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    if (selected)
+                      const Icon(
+                        Icons.check_circle,
+                        color: PromoColors.purple,
+                        size: 18,
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ImagePlaceholder extends StatelessWidget {
+  const _ImagePlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.white,
+      alignment: Alignment.center,
+      child: const Icon(
+        Icons.image_outlined,
+        color: PromoColors.purple,
+        size: 42,
       ),
     );
   }

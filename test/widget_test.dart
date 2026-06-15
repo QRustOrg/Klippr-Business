@@ -238,6 +238,7 @@ Promotion _promotion({
   required PromotionStatus status,
   required bool isActive,
   String businessId = 'business-1',
+  String? imageKey,
   int? redemptionCap,
   DateTime? startDate,
   DateTime? endDate,
@@ -252,6 +253,7 @@ Promotion _promotion({
     startDate: startDate ?? DateTime(2026, 6, 1),
     endDate: endDate ?? DateTime(2027, 9, 7),
     redemptionCap: redemptionCap,
+    imageKey: imageKey,
     status: status,
     isActive: isActive,
   );
@@ -308,6 +310,7 @@ class _FakePromotionsRepository extends PromotionsRepository {
     required DiscountType discountType,
     required DateTime startDate,
     required DateTime endDate,
+    required String imageKey,
     int? redemptionCap,
   }) async =>
       const Success('new-promotion');
@@ -333,6 +336,7 @@ class _FakePromotionsRepository extends PromotionsRepository {
     required DiscountType discountType,
     required DateTime startDate,
     required DateTime endDate,
+    required String imageKey,
     int? redemptionCap,
   }) async =>
       const Success(null);

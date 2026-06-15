@@ -15,6 +15,7 @@ class CreatePromotionRequest {
     required this.discountType,
     required this.startDate,
     required this.endDate,
+    required this.imageKey,
     this.redemptionCap,
   });
 
@@ -25,6 +26,7 @@ class CreatePromotionRequest {
   final DiscountType discountType;
   final DateTime startDate;
   final DateTime endDate;
+  final String imageKey;
   final int? redemptionCap;
 
   Map<String, dynamic> toJson() => {
@@ -35,6 +37,7 @@ class CreatePromotionRequest {
         'discountType': discountType.api,
         'startDate': startDate.toUtc().toIso8601String(),
         'endDate': endDate.toUtc().toIso8601String(),
+        'imageKey': imageKey,
         if (redemptionCap != null) 'redemptionCap': redemptionCap,
       };
 }
@@ -48,6 +51,7 @@ class UpdatePromotionRequest {
     required this.discountType,
     required this.startDate,
     required this.endDate,
+    required this.imageKey,
     this.redemptionCap,
   });
 
@@ -57,6 +61,7 @@ class UpdatePromotionRequest {
   final DiscountType discountType;
   final DateTime startDate;
   final DateTime endDate;
+  final String imageKey;
   final int? redemptionCap;
 
   Map<String, dynamic> toJson() => {
@@ -66,6 +71,7 @@ class UpdatePromotionRequest {
         'discountType': discountType.api,
         'startDate': startDate.toUtc().toIso8601String(),
         'endDate': endDate.toUtc().toIso8601String(),
+        'imageKey': imageKey,
         if (redemptionCap != null) 'redemptionCap': redemptionCap,
       };
 }

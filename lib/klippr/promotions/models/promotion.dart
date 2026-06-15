@@ -63,6 +63,7 @@ class Promotion {
     required this.startDate,
     required this.endDate,
     this.redemptionCap,
+    this.imageKey,
     required this.status,
     required this.isActive,
   });
@@ -76,6 +77,7 @@ class Promotion {
   final DateTime? startDate;
   final DateTime? endDate;
   final int? redemptionCap;
+  final String? imageKey;
   final PromotionStatus status;
   final bool isActive;
 
@@ -101,6 +103,7 @@ class Promotion {
       startDate: DateTime.tryParse(json['startDate'] as String? ?? ''),
       endDate: DateTime.tryParse(json['endDate'] as String? ?? ''),
       redemptionCap: (json['redemptionCap'] as num?)?.toInt(),
+      imageKey: json['imageKey'] as String?,
       status: PromotionStatus.parse(json['status'] as String?),
       isActive: json['isActive'] as bool? ?? false,
     );
