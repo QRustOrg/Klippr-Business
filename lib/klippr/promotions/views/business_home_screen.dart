@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../analytics/repository/analytics_repository.dart';
+import '../../analytics/services/analytics_service.dart';
+import '../../core/network/api_client.dart';
+import '../../core/utils/result.dart';
 import '../../core/widgets/dashed_border.dart';
 import '../../core/widgets/klippr_bottom_bar.dart';
 import '../bloc/promotions_bloc.dart';
@@ -20,18 +24,35 @@ import 'promo_colors.dart';
 
 /// Dashboard de inicio del negocio.
 class BusinessHomeScreen extends StatefulWidget {
-  const BusinessHomeScreen({super.key});
+  const BusinessHomeScreen({
+    super.key,
+    AnalyticsRepository? analyticsRepository,
+  }) : _analyticsRepository = analyticsRepository;
+
+  final AnalyticsRepository? _analyticsRepository;
 
   @override
   State<BusinessHomeScreen> createState() => _BusinessHomeScreenState();
 }
 
 class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
+  late final AnalyticsRepository _analyticsRepository;
+  final Map<String, Future<Result<int>>> _redemptionCountFutures = {};
+
   @override
   void initState() {
     super.initState();
+    _analyticsRepository =
+        widget._analyticsRepository ??
+        AnalyticsRepository(AnalyticsService(ApiClient()));
     context.read<PromotionsBloc>().add(const LoadPromotions());
   }
+
+  Future<Result<int>> _redemptionsFor(String promotionId) =>
+      _redemptionCountFutures.putIfAbsent(
+        promotionId,
+        () => _analyticsRepository.loadPromotionRedemptions(promotionId),
+      );
 
   void _openCreate({Promotion? promotion}) {
     final bloc = context.read<PromotionsBloc>();
@@ -101,28 +122,27 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
           const _HomeTopBar(),
           Expanded(
             child: BlocConsumer<PromotionsBloc, PromotionsState>(
-              listenWhen: (_, _) =>
-                  ModalRoute.of(context)?.isCurrent ?? true,
+              listenWhen: (_, _) => ModalRoute.of(context)?.isCurrent ?? true,
               listener: (context, state) {
                 if (state.error != null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(state.error!)),
-                  );
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text(state.error!)));
                   context.read<PromotionsBloc>().add(
-                        const PromotionsFlagsConsumed(),
-                      );
+                    const PromotionsFlagsConsumed(),
+                  );
                 } else if (state.actionMessage != null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(state.actionMessage!)),
-                  );
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text(state.actionMessage!)));
                   context.read<PromotionsBloc>().add(
-                        const PromotionsFlagsConsumed(),
-                      );
+                    const PromotionsFlagsConsumed(),
+                  );
                 } else if (state.promotionToEdit != null) {
                   final promotion = state.promotionToEdit!;
                   context.read<PromotionsBloc>().add(
-                        const PromotionEditConsumed(),
-                      );
+                    const PromotionEditConsumed(),
+                  );
                   _openCreate(promotion: promotion);
                 }
               },
@@ -173,34 +193,41 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
                                 child: _PromotionCard(
                                   promotion: p,
                                   onEdit: () => _requestEdit(p),
+                                  redemptionsFuture: _redemptionsFor(p.id),
                                   onPublish: () async {
                                     if (state.actionInProgress) return;
-                                    if (await _confirm('Publicar promocion',
-                                        '¿Publicar "${p.title}"?')) {
+                                    if (await _confirm(
+                                      'Publicar promocion',
+                                      '¿Publicar "${p.title}"?',
+                                    )) {
                                       if (!context.mounted) return;
-                                      context
-                                          .read<PromotionsBloc>()
-                                          .add(PublishPromotion(p.id));
+                                      context.read<PromotionsBloc>().add(
+                                        PublishPromotion(p.id),
+                                      );
                                     }
                                   },
                                   onCancel: () async {
                                     if (state.actionInProgress) return;
-                                    if (await _confirm('Cancelar promocion',
-                                        '¿Cancelar "${p.title}"?')) {
+                                    if (await _confirm(
+                                      'Cancelar promocion',
+                                      '¿Cancelar "${p.title}"?',
+                                    )) {
                                       if (!context.mounted) return;
-                                      context
-                                          .read<PromotionsBloc>()
-                                          .add(CancelPromotion(p.id));
+                                      context.read<PromotionsBloc>().add(
+                                        CancelPromotion(p.id),
+                                      );
                                     }
                                   },
                                   onDelete: () async {
                                     if (state.actionInProgress) return;
-                                    if (await _confirm('Eliminar promocion',
-                                        '¿Eliminar "${p.title}"? No se puede deshacer.')) {
+                                    if (await _confirm(
+                                      'Eliminar promocion',
+                                      '¿Eliminar "${p.title}"? No se puede deshacer.',
+                                    )) {
                                       if (!context.mounted) return;
-                                      context
-                                          .read<PromotionsBloc>()
-                                          .add(DeletePromotion(p.id));
+                                      context.read<PromotionsBloc>().add(
+                                        DeletePromotion(p.id),
+                                      );
                                     }
                                   },
                                 ),
@@ -328,14 +355,20 @@ class _HomeTopBar extends StatelessWidget {
                     children: [
                       IconButton(
                         onPressed: () {},
-                        icon: const Icon(Icons.qr_code_2,
-                            color: Colors.white, size: 28),
+                        icon: const Icon(
+                          Icons.qr_code_2,
+                          color: Colors.white,
+                          size: 28,
+                        ),
                         tooltip: 'QR',
                       ),
                       IconButton(
                         onPressed: () {},
-                        icon: const Icon(Icons.notifications_outlined,
-                            color: Colors.white, size: 28),
+                        icon: const Icon(
+                          Icons.notifications_outlined,
+                          color: Colors.white,
+                          size: 28,
+                        ),
                         tooltip: 'Notificaciones',
                       ),
                     ],
@@ -425,6 +458,7 @@ class _StatCard extends StatelessWidget {
 class _PromotionCard extends StatelessWidget {
   const _PromotionCard({
     required this.promotion,
+    required this.redemptionsFuture,
     required this.onEdit,
     required this.onPublish,
     required this.onCancel,
@@ -432,6 +466,7 @@ class _PromotionCard extends StatelessWidget {
   });
 
   final Promotion promotion;
+  final Future<Result<int>> redemptionsFuture;
   final VoidCallback onEdit;
   final VoidCallback onPublish;
   final VoidCallback onCancel;
@@ -445,11 +480,11 @@ class _PromotionCard extends StatelessWidget {
       promotion.status == PromotionStatus.published && !_isExpired;
 
   String get _statusLabel => switch (promotion.status) {
-        _ when _isExpired => PromotionStatus.expired.label,
-        PromotionStatus.published =>
-          promotion.isActive ? 'Activa' : promotion.status.label,
-        _ => promotion.status.label,
-      };
+    _ when _isExpired => PromotionStatus.expired.label,
+    PromotionStatus.published =>
+      promotion.isActive ? 'Activa' : promotion.status.label,
+    _ => promotion.status.label,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -503,16 +538,17 @@ class _PromotionCard extends StatelessWidget {
               child: Image.asset(
                 image.assetPath,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const DecoratedBox(
-                  decoration: BoxDecoration(color: PromoColors.fieldBg),
-                  child: Center(
-                    child: Icon(
-                      Icons.image_outlined,
-                      color: PromoColors.purple,
-                      size: 42,
+                errorBuilder: (context, error, stackTrace) =>
+                    const DecoratedBox(
+                      decoration: BoxDecoration(color: PromoColors.fieldBg),
+                      child: Center(
+                        child: Icon(
+                          Icons.image_outlined,
+                          color: PromoColors.purple,
+                          size: 42,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
               ),
             ),
           ),
@@ -547,6 +583,17 @@ class _PromotionCard extends StatelessWidget {
                 label: promotion.discountLabel,
                 background: const Color(0xFFFBF7C5),
                 foreground: const Color(0xFF9A9350),
+              ),
+              FutureBuilder<Result<int>>(
+                future: redemptionsFuture,
+                builder: (context, snapshot) {
+                  final value = snapshot.data?.dataOrNull;
+                  return _PromotionMetaChip(
+                    label: value == null ? 'canjes --' : '$value canjes',
+                    background: PromoColors.statGreenBg,
+                    foreground: PromoColors.statGreenIcon,
+                  );
+                },
               ),
             ],
           ),
@@ -648,24 +695,24 @@ class _PromotionStatusPill extends StatelessWidget {
   final bool isExpired;
 
   Color get _background => switch (status) {
-        _ when isExpired => PromoColors.statAmberBg,
-        PromotionStatus.published when isActive => PromoColors.statGreenBg,
-        PromotionStatus.published => PromoColors.statBlueBg,
-        PromotionStatus.draft => PromoColors.statPurpleBg,
-        PromotionStatus.cancelled => const Color(0xFFFFD6D2),
-        PromotionStatus.expired => PromoColors.statAmberBg,
-        PromotionStatus.unknown => const Color(0xFFEAEAEA),
-      };
+    _ when isExpired => PromoColors.statAmberBg,
+    PromotionStatus.published when isActive => PromoColors.statGreenBg,
+    PromotionStatus.published => PromoColors.statBlueBg,
+    PromotionStatus.draft => PromoColors.statPurpleBg,
+    PromotionStatus.cancelled => const Color(0xFFFFD6D2),
+    PromotionStatus.expired => PromoColors.statAmberBg,
+    PromotionStatus.unknown => const Color(0xFFEAEAEA),
+  };
 
   Color get _foreground => switch (status) {
-        _ when isExpired => const Color(0xFFC97900),
-        PromotionStatus.published when isActive => const Color(0xFF009B55),
-        PromotionStatus.published => PromoColors.statBlueIcon,
-        PromotionStatus.draft => PromoColors.purpleText,
-        PromotionStatus.cancelled => PromoColors.errorRed,
-        PromotionStatus.expired => const Color(0xFFC97900),
-        PromotionStatus.unknown => PromoColors.textGray,
-      };
+    _ when isExpired => const Color(0xFFC97900),
+    PromotionStatus.published when isActive => const Color(0xFF009B55),
+    PromotionStatus.published => PromoColors.statBlueIcon,
+    PromotionStatus.draft => PromoColors.purpleText,
+    PromotionStatus.cancelled => PromoColors.errorRed,
+    PromotionStatus.expired => const Color(0xFFC97900),
+    PromotionStatus.unknown => PromoColors.textGray,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -800,8 +847,11 @@ class _EmptyPromotions extends StatelessWidget {
                 shape: BoxShape.circle,
                 border: Border.all(color: PromoColors.lavender, width: 2),
               ),
-              child: const Icon(Icons.inventory_2_outlined,
-                  color: PromoColors.emptyIcon, size: 44),
+              child: const Icon(
+                Icons.inventory_2_outlined,
+                color: PromoColors.emptyIcon,
+                size: 44,
+              ),
             ),
             const SizedBox(height: 20),
             const Text(
@@ -831,8 +881,10 @@ class _EmptyPromotions extends StatelessWidget {
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: PromoColors.purple,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 14,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(50),
                 ),

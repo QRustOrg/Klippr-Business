@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:klippr/klippr/analytics/repository/analytics_repository.dart';
+import 'package:klippr/klippr/analytics/services/analytics_service.dart';
 import 'package:klippr/klippr/core/network/api_client.dart';
 import 'package:klippr/klippr/core/utils/result.dart';
 import 'package:klippr/klippr/promotions/bloc/promotions_bloc.dart';
@@ -11,8 +13,9 @@ import 'package:klippr/klippr/promotions/views/active_promotions_screen.dart';
 import 'package:klippr/klippr/promotions/views/business_home_screen.dart';
 
 void main() {
-  testWidgets('draft promotion card renders mockup details and draft actions',
-      (tester) async {
+  testWidgets('draft promotion card renders mockup details and draft actions', (
+    tester,
+  ) async {
     final repo = _FakePromotionsRepository([
       _promotion(
         id: 'PROMO0574A52D41',
@@ -30,6 +33,7 @@ void main() {
     expect(find.text('CHAMPIONS'), findsOneWidget);
     expect(find.textContaining('tercera completamente gratis'), findsOneWidget);
     expect(find.text('250 unid.'), findsOneWidget);
+    expect(find.text('12 canjes'), findsOneWidget);
     expect(find.text('PROMO0574A52D41'), findsOneWidget);
     expect(find.text('Borrador'), findsOneWidget);
     expect(find.byTooltip('Editar promocion'), findsOneWidget);
@@ -38,8 +42,9 @@ void main() {
     expect(find.byTooltip('Cancelar promocion'), findsNothing);
   });
 
-  testWidgets('double tapping a draft card fetches fresh data and opens edit',
-      (tester) async {
+  testWidgets('double tapping a draft card fetches fresh data and opens edit', (
+    tester,
+  ) async {
     final repo = _FakePromotionsRepository(
       [
         _promotion(
@@ -60,17 +65,22 @@ void main() {
     );
 
     await tester.pumpBusinessHome(repo);
-    await tester.tap(find.text('DRAFT OLD TITLE'));
-    await tester.tap(find.text('DRAFT OLD TITLE'));
+    await tester.scrollUntilVisible(find.text('DRAFT OLD TITLE'), 120);
+    final draftTitleCenter = tester.getCenter(find.text('DRAFT OLD TITLE'));
+    await tester.tapAt(draftTitleCenter);
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.tapAt(draftTitleCenter);
+    await tester.pump(const Duration(milliseconds: 100));
     await tester.pumpAndSettle();
 
     expect(repo.getByIdCalls, 1);
-    expect(find.text('+ QR'), findsOneWidget);
+    expect(find.text('+ QR'), findsWidgets);
     expect(find.text('Fresh draft title'), findsOneWidget);
   });
 
-  testWidgets('double tapping a non-draft card shows edit guard snackbar',
-      (tester) async {
+  testWidgets('double tapping a non-draft card shows edit guard snackbar', (
+    tester,
+  ) async {
     final repo = _FakePromotionsRepository([
       _promotion(
         id: 'PROMOPUBLISHED123',
@@ -82,8 +92,12 @@ void main() {
     ]);
 
     await tester.pumpBusinessHome(repo);
-    await tester.tap(find.text('PUBLISHED PROMO'));
-    await tester.tap(find.text('PUBLISHED PROMO'));
+    await tester.scrollUntilVisible(find.text('PUBLISHED PROMO'), 120);
+    final publishedTitleCenter = tester.getCenter(find.text('PUBLISHED PROMO'));
+    await tester.tapAt(publishedTitleCenter);
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.tapAt(publishedTitleCenter);
+    await tester.pump(const Duration(milliseconds: 100));
     await tester.pump();
 
     expect(repo.getByIdCalls, 0);
@@ -93,8 +107,9 @@ void main() {
     );
   });
 
-  testWidgets('publish action asks for confirmation before publishing',
-      (tester) async {
+  testWidgets('publish action asks for confirmation before publishing', (
+    tester,
+  ) async {
     final repo = _FakePromotionsRepository([
       _promotion(
         id: 'PROMODRAFTPUBLISH',
@@ -106,7 +121,17 @@ void main() {
     ]);
 
     await tester.pumpBusinessHome(repo);
-    await tester.tap(find.byTooltip('Publicar promocion'));
+    final publishButton = find.ancestor(
+      of: find.byIcon(Icons.publish_outlined),
+      matching: find.byType(IconButton),
+    );
+    await tester.scrollUntilVisible(publishButton, 120);
+    await tester.drag(
+      find.byType(SingleChildScrollView),
+      const Offset(0, -180),
+    );
+    await tester.pump();
+    await tester.tap(publishButton);
     await tester.pumpAndSettle();
 
     expect(find.text('Publicar promocion'), findsOneWidget);
@@ -119,8 +144,9 @@ void main() {
     expect(find.text('Promocion publicada.'), findsOneWidget);
   });
 
-  testWidgets('published promotion card shows active state and cancel action',
-      (tester) async {
+  testWidgets('published promotion card shows active state and cancel action', (
+    tester,
+  ) async {
     final repo = _FakePromotionsRepository([
       _promotion(
         id: 'PROMOACTIVE1234',
@@ -143,8 +169,9 @@ void main() {
     expect(find.byTooltip('Eliminar promocion'), findsOneWidget);
   });
 
-  testWidgets('expired and cancelled promotions only expose delete action',
-      (tester) async {
+  testWidgets('expired and cancelled promotions only expose delete action', (
+    tester,
+  ) async {
     final repo = _FakePromotionsRepository([
       _promotion(
         id: 'PROMOEXPIRED123',
@@ -173,8 +200,9 @@ void main() {
     expect(find.byTooltip('Eliminar promocion'), findsNWidgets(2));
   });
 
-  testWidgets('Mi Lista shows only active promotions from current business',
-      (tester) async {
+  testWidgets('Mi Lista shows only active promotions from current business', (
+    tester,
+  ) async {
     final repo = _FakePromotionsRepository(
       const [],
       activePromotions: [
@@ -211,7 +239,9 @@ extension on WidgetTester {
       MaterialApp(
         home: BlocProvider<PromotionsBloc>(
           create: (_) => PromotionsBloc(repo),
-          child: const BusinessHomeScreen(),
+          child: BusinessHomeScreen(
+            analyticsRepository: _FakeAnalyticsRepository(),
+          ),
         ),
       ),
     );
@@ -229,6 +259,14 @@ extension on WidgetTester {
     );
     await pumpAndSettle();
   }
+}
+
+class _FakeAnalyticsRepository extends AnalyticsRepository {
+  _FakeAnalyticsRepository() : super(AnalyticsService(ApiClient()));
+
+  @override
+  Future<Result<int>> loadPromotionRedemptions(String promotionId) async =>
+      const Success(12);
 }
 
 Promotion _promotion({
@@ -264,9 +302,9 @@ class _FakePromotionsRepository extends PromotionsRepository {
     this.promotions, {
     this.activePromotions = const [],
     Promotion? promotionById,
-  })  : promotionById =
-            promotionById ?? (promotions.isEmpty ? null : promotions.first),
-        super(PromotionsService(ApiClient()));
+  }) : promotionById =
+           promotionById ?? (promotions.isEmpty ? null : promotions.first),
+       super(PromotionsService(ApiClient()));
 
   final List<Promotion> promotions;
   final List<Promotion> activePromotions;
@@ -312,8 +350,7 @@ class _FakePromotionsRepository extends PromotionsRepository {
     required DateTime endDate,
     required String imageKey,
     int? redemptionCap,
-  }) async =>
-      const Success('new-promotion');
+  }) async => const Success('new-promotion');
 
   @override
   Future<Result<void>> delete(String id) async => const Success(null);
@@ -338,6 +375,5 @@ class _FakePromotionsRepository extends PromotionsRepository {
     required DateTime endDate,
     required String imageKey,
     int? redemptionCap,
-  }) async =>
-      const Success(null);
+  }) async => const Success(null);
 }
