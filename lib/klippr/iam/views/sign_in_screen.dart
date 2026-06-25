@@ -56,11 +56,15 @@ class _SignInScreenState extends State<SignInScreen> {
     final prefs = PrefsHelper.instance;
     final remember = prefs.rememberMe;
     final email = prefs.rememberedEmail;
+    final password = prefs.rememberedPassword;
     if (!mounted) return;
     setState(() {
       _rememberMe = remember;
       if (remember && email != null && email.isNotEmpty) {
         _email.text = email;
+      }
+      if (remember && password != null && password.isNotEmpty) {
+        _password.text = password;
       }
     });
   }
@@ -68,7 +72,10 @@ class _SignInScreenState extends State<SignInScreen> {
   Future<void> _syncRememberedUser() async {
     final prefs = PrefsHelper.instance;
     if (_rememberMe) {
-      await prefs.setRememberedUser(email: _email.text);
+      await prefs.setRememberedUser(
+        email: _email.text,
+        password: _password.text,
+      );
     } else {
       await prefs.clearRememberedUser();
     }
