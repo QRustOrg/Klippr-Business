@@ -7,10 +7,13 @@ import 'package:klippr/klippr/core/theme/app_theme.dart';
 import 'package:klippr/klippr/iam/bloc/auth_bloc.dart';
 import 'package:klippr/klippr/iam/repository/iam_repository.dart';
 import 'package:klippr/klippr/iam/services/iam_service.dart';
-import 'package:klippr/klippr/iam/views/sign_in_screen.dart';
+import 'package:klippr/klippr/iam/views/splash_session_screen.dart';
 import 'package:klippr/klippr/promotions/bloc/promotions_bloc.dart';
 import 'package:klippr/klippr/promotions/repository/promotions_repository.dart';
 import 'package:klippr/klippr/promotions/services/promotions_service.dart';
+import 'package:klippr/klippr/redemption/bloc/redemption_bloc.dart';
+import 'package:klippr/klippr/redemption/repository/redemption_repository.dart';
+import 'package:klippr/klippr/redemption/services/redemption_service.dart';
 
 // author: Samuel Bonifacio
 //
@@ -34,6 +37,8 @@ class KlipprBusinessApp extends StatelessWidget {
     final iamRepository = IamRepository(IamService(apiClient));
     final promotionsRepository =
         PromotionsRepository(PromotionsService(apiClient));
+    final redemptionRepository =
+        RedemptionRepository(RedemptionService(apiClient));
 
     return MultiBlocProvider(
       providers: [
@@ -41,12 +46,15 @@ class KlipprBusinessApp extends StatelessWidget {
         BlocProvider<PromotionsBloc>(
           create: (_) => PromotionsBloc(promotionsRepository),
         ),
+        BlocProvider<RedemptionBloc>(
+          create: (_) => RedemptionBloc(redemptionRepository),
+        ),
       ],
       child: MaterialApp(
         title: 'Klippr Business',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
-        home: const SignInScreen(),
+        home: const SplashSessionScreen(),
       ),
     );
   }

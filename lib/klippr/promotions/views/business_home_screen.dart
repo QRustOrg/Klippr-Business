@@ -15,6 +15,8 @@ import '../models/promotion_image_catalog.dart';
 import 'active_promotions_screen.dart';
 import 'create_promotion_screen.dart';
 import 'promo_colors.dart';
+import '../../redemption/views/redemption_scan_screen.dart';
+import '../../redemption/bloc/redemption_bloc.dart';
 
 // author: Samuel Bonifacio
 //
@@ -354,7 +356,18 @@ class _HomeTopBar extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          final redemptionBloc =
+                              context.read<RedemptionBloc>();
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => BlocProvider.value(
+                                value: redemptionBloc,
+                                child: const RedemptionScanScreen(),
+                              ),
+                            ),
+                          );
+                        },
                         icon: const Icon(
                           Icons.qr_code_2,
                           color: Colors.white,
