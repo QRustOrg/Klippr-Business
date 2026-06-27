@@ -1,6 +1,5 @@
 import '../../core/network/api_exceptions.dart';
 import '../../core/utils/result.dart';
-import '../models/campaign_metrics.dart';
 import '../services/analytics_service.dart';
 
 class AnalyticsRepository {
@@ -8,14 +7,23 @@ class AnalyticsRepository {
 
   final AnalyticsService _service;
 
-  Future<Result<int>> loadPromotionRedemptions(String promotionId) async {
-    final res = await _service.getCampaignMetrics(promotionId);
+  Future<Result<int>> loadPromotionRedemptions(
+    String businessId,
+    String promotionId,
+  ) async {
+    final res = await _service.getRedemptionsByBusiness(businessId);
     return res.when(
       onSuccess: (json) {
-        if (json is Map<String, dynamic>) {
-          return Success<int>(CampaignMetrics.fromJson(json).redemptions);
+        if (json is List) {
+          final count = json.where((item) {
+            if (item is! Map<String, dynamic>) return false;
+            final pid = item['promotionId']?.toString() ?? '';
+            final status = item['status']?.toString() ?? '';
+            return pid == promotionId && status == 'Redeemed';
+          }).length;
+          return Success<int>(count);
         }
-        return const Failure<int>(ParseException());
+        return const Success<int>(0);
       },
       onFailure: (error) {
         if (error is NotFoundException) return const Success<int>(0);

@@ -265,7 +265,10 @@ class _FakeAnalyticsRepository extends AnalyticsRepository {
   _FakeAnalyticsRepository() : super(AnalyticsService(ApiClient()));
 
   @override
-  Future<Result<int>> loadPromotionRedemptions(String promotionId) async =>
+  Future<Result<int>> loadPromotionRedemptions(
+    String businessId,
+    String promotionId,
+  ) async =>
       const Success(12);
 }
 

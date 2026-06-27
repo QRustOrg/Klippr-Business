@@ -39,9 +39,14 @@ class Redemption {
     required this.customerId,
     required this.customerName,
     required this.uniqueToken,
+    required this.code,
     required this.status,
+    required this.validationMethod,
+    required this.discountAppliedAmount,
     required this.createdAt,
     this.confirmedAt,
+    this.expiresAt,
+    this.blockedAt,
   });
 
   final String id;
@@ -50,9 +55,14 @@ class Redemption {
   final String customerId;
   final String customerName;
   final String uniqueToken;
+  final String code;
   final RedemptionTokenStatus status;
+  final String validationMethod;
+  final double discountAppliedAmount;
   final DateTime createdAt;
   final DateTime? confirmedAt;
+  final DateTime? expiresAt;
+  final DateTime? blockedAt;
 
   factory Redemption.fromJson(Map<String, dynamic> json) {
     return Redemption(
@@ -62,12 +72,22 @@ class Redemption {
       customerId: json['customerId'] as String? ?? '',
       customerName: json['customerName'] as String? ?? '',
       uniqueToken: json['uniqueToken'] as String? ?? '',
+      code: json['code'] as String? ?? '',
       status: RedemptionTokenStatus.parse(json['status'] as String?),
+      validationMethod: json['validationMethod'] as String? ?? '',
+      discountAppliedAmount:
+          (json['discountAppliedAmount'] as num?)?.toDouble() ?? 0,
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'] as String) ?? DateTime.now()
           : DateTime.now(),
       confirmedAt: json['confirmedAt'] != null
           ? DateTime.tryParse(json['confirmedAt'] as String)
+          : null,
+      expiresAt: json['expiresAt'] != null
+          ? DateTime.tryParse(json['expiresAt'] as String)
+          : null,
+      blockedAt: json['blockedAt'] != null
+          ? DateTime.tryParse(json['blockedAt'] as String)
           : null,
     );
   }

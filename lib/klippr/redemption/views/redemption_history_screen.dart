@@ -165,9 +165,13 @@ class _HistoryRedemptionCard extends StatelessWidget {
         RedemptionTokenStatus.unknown => const Color(0xFF888888),
       };
 
-  String _truncateToken(String token) {
-    if (token.length <= 12) return token;
-    return '${token.substring(0, 8)}...';
+  String _formatDateTime(DateTime date) {
+    final dd = date.day.toString().padLeft(2, '0');
+    final mm = date.month.toString().padLeft(2, '0');
+    final yyyy = date.year.toString().padLeft(4, '0');
+    final hh = date.hour.toString().padLeft(2, '0');
+    final min = date.minute.toString().padLeft(2, '0');
+    return '$dd/$mm/$yyyy $hh:$min';
   }
 
   String _formatDate(DateTime date) {
@@ -175,6 +179,11 @@ class _HistoryRedemptionCard extends StatelessWidget {
     final mm = date.month.toString().padLeft(2, '0');
     final yyyy = date.year.toString().padLeft(4, '0');
     return '$dd/$mm/$yyyy';
+  }
+
+  String _formatMoney(double amount) {
+    if (amount == 0) return 'S/ 0.00';
+    return 'S/ ${amount.toStringAsFixed(2)}';
   }
 
   @override
@@ -191,29 +200,61 @@ class _HistoryRedemptionCard extends StatelessWidget {
           ),
         ],
       ),
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: _statusBackground,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  redemption.status == RedemptionTokenStatus.confirmed
+                      ? Icons.check_circle_outline
+                      : redemption.status == RedemptionTokenStatus.pending
+                          ? Icons.schedule
+                          : Icons.cancel_outlined,
+                  color: _statusForeground,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  redemption.customerName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1A1A1A),
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Código',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF888888),
+                      ),
+                    ),
+                    Text(
+                      redemption.code.isNotEmpty
+                          ? redemption.code
+                          : redemption.uniqueToken,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1A1A1A),
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(width: 8),
               Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: _statusBackground,
                   borderRadius: BorderRadius.circular(50),
@@ -222,42 +263,130 @@ class _HistoryRedemptionCard extends StatelessWidget {
                   redemption.status.label,
                   style: TextStyle(
                     color: _statusForeground,
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Row(
+          const SizedBox(height: 14),
+          const Divider(color: Color(0xFFEDE5F1), height: 1, thickness: 1),
+          const SizedBox(height: 12),
+          _DetailRow(
+            icon: Icons.savings_outlined,
+            label: 'Descuento aplicado',
+            value: _formatMoney(redemption.discountAppliedAmount),
+            valueColor: const Color(0xFF27AE60),
+          ),
+          if (redemption.validationMethod.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            _DetailRow(
+              icon: Icons.smartphone_outlined,
+              label: 'Método de validación',
+              value: redemption.validationMethod,
+            ),
+          ],
+          const SizedBox(height: 10),
+          _DetailRow(
+            icon: Icons.calendar_today_outlined,
+            label: 'Generado',
+            value: _formatDateTime(redemption.createdAt),
+          ),
+          if (redemption.confirmedAt != null) ...[
+            const SizedBox(height: 10),
+            _DetailRow(
+              icon: Icons.check_circle_outline,
+              label: 'Canjeado',
+              value: _formatDateTime(redemption.confirmedAt!),
+              valueColor: const Color(0xFF27AE60),
+            ),
+          ],
+          if (redemption.blockedAt != null) ...[
+            const SizedBox(height: 10),
+            _DetailRow(
+              icon: Icons.block_outlined,
+              label: 'Bloqueado',
+              value: _formatDateTime(redemption.blockedAt!),
+              valueColor: const Color(0xFFE53935),
+            ),
+          ],
+          if (redemption.expiresAt != null) ...[
+            const SizedBox(height: 10),
+            _DetailRow(
+              icon: Icons.timer_outlined,
+              label: 'Expira',
+              value: _formatDate(redemption.expiresAt!),
+            ),
+          ],
+          const SizedBox(height: 10),
+          _DetailRow(
+            icon: Icons.key_outlined,
+            label: 'Token',
+            value: redemption.uniqueToken,
+            mono: true,
+          ),
+          const SizedBox(height: 10),
+          _DetailRow(
+            icon: Icons.tag,
+            label: 'ID',
+            value: '#${redemption.id}',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.valueColor,
+    this.mono = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color? valueColor;
+  final bool mono;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 16, color: const Color(0xFF887BF3)),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.confirmation_num_outlined,
-                  size: 16, color: Color(0xFF888888)),
-              const SizedBox(width: 6),
               Text(
-                _truncateToken(redemption.uniqueToken),
+                label,
                 style: const TextStyle(
-                  fontSize: 13,
+                  fontSize: 11,
                   color: Color(0xFF888888),
-                  fontFamily: 'monospace',
                 ),
               ),
-              const Spacer(),
-              const Icon(Icons.calendar_today_outlined,
-                  size: 16, color: Color(0xFF888888)),
-              const SizedBox(width: 6),
+              const SizedBox(height: 2),
               Text(
-                _formatDate(redemption.createdAt),
-                style: const TextStyle(
+                value,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
                   fontSize: 13,
-                  color: Color(0xFF888888),
+                  fontWeight: FontWeight.w600,
+                  color: valueColor ?? const Color(0xFF1A1A1A),
+                  fontFamily: mono ? 'monospace' : null,
                 ),
               ),
             ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
