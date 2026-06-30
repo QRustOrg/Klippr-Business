@@ -1,34 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:klippr/klippr/analytics/repository/analytics_repository.dart';
-import 'package:klippr/klippr/analytics/services/analytics_service.dart';
-import 'package:klippr/klippr/core/network/api_client.dart';
-import 'package:klippr/klippr/core/utils/result.dart';
-import 'package:klippr/klippr/promotions/bloc/promotions_bloc.dart';
-import 'package:klippr/klippr/promotions/models/promotion.dart';
-import 'package:klippr/klippr/promotions/repository/promotions_repository.dart';
-import 'package:klippr/klippr/promotions/services/promotions_service.dart';
-import 'package:klippr/klippr/promotions/views/active_promotions_screen.dart';
-import 'package:klippr/klippr/promotions/views/business_home_screen.dart';
+import 'package:klippr/klippr/analytics/domain/stores/analytics_store.dart';
+import 'package:klippr/klippr/promotions/application/bloc/promotions_bloc.dart';
+import 'package:klippr/klippr/promotions/domain/models/promotion.dart';
+import 'package:klippr/klippr/promotions/domain/stores/promotions_store.dart';
+import 'package:klippr/klippr/promotions/presentation/views/active_promotions_screen.dart';
+import 'package:klippr/klippr/promotions/presentation/views/business_home_screen.dart';
+import 'package:klippr/klippr/shared/data/network/result.dart';
+import 'package:klippr/klippr/shared/domain/models/id.dart';
 
 void main() {
   testWidgets('draft promotion card renders mockup details and draft actions', (
-    tester,
-  ) async {
-    final repo = _FakePromotionsRepository([
+      tester,
+      ) async {
+    final store = _FakePromotionsStore([
       _promotion(
         id: 'PROMO0574A52D41',
         title: 'Champions',
         description:
-            'Por la compra de 2 hamburguesas, llevate la tercera completamente gratis',
+        'Por la compra de 2 hamburguesas, llevate la tercera completamente gratis',
         status: PromotionStatus.draft,
         isActive: false,
         redemptionCap: 250,
       ),
     ]);
 
-    await tester.pumpBusinessHome(repo);
+    await tester.pumpBusinessHome(store);
 
     expect(find.text('CHAMPIONS'), findsOneWidget);
     expect(find.textContaining('tercera completamente gratis'), findsOneWidget);
@@ -43,9 +41,9 @@ void main() {
   });
 
   testWidgets('double tapping a draft card fetches fresh data and opens edit', (
-    tester,
-  ) async {
-    final repo = _FakePromotionsRepository(
+      tester,
+      ) async {
+    final store = _FakePromotionsStore(
       [
         _promotion(
           id: 'PROMODRAFT123',
@@ -64,7 +62,7 @@ void main() {
       ),
     );
 
-    await tester.pumpBusinessHome(repo);
+    await tester.pumpBusinessHome(store);
     await tester.scrollUntilVisible(find.text('DRAFT OLD TITLE'), 120);
     final draftTitleCenter = tester.getCenter(find.text('DRAFT OLD TITLE'));
     await tester.tapAt(draftTitleCenter);
@@ -73,15 +71,15 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pumpAndSettle();
 
-    expect(repo.getByIdCalls, 1);
+    expect(store.getByIdCalls, 1);
     expect(find.text('+ QR'), findsWidgets);
     expect(find.text('Fresh draft title'), findsOneWidget);
   });
 
   testWidgets('double tapping a non-draft card shows edit guard snackbar', (
-    tester,
-  ) async {
-    final repo = _FakePromotionsRepository([
+      tester,
+      ) async {
+    final store = _FakePromotionsStore([
       _promotion(
         id: 'PROMOPUBLISHED123',
         title: 'Published promo',
@@ -91,7 +89,7 @@ void main() {
       ),
     ]);
 
-    await tester.pumpBusinessHome(repo);
+    await tester.pumpBusinessHome(store);
     await tester.scrollUntilVisible(find.text('PUBLISHED PROMO'), 120);
     final publishedTitleCenter = tester.getCenter(find.text('PUBLISHED PROMO'));
     await tester.tapAt(publishedTitleCenter);
@@ -100,7 +98,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump();
 
-    expect(repo.getByIdCalls, 0);
+    expect(store.getByIdCalls, 0);
     expect(
       find.text('Solo puedes editar promociones en borrador.'),
       findsOneWidget,
@@ -108,9 +106,9 @@ void main() {
   });
 
   testWidgets('publish action asks for confirmation before publishing', (
-    tester,
-  ) async {
-    final repo = _FakePromotionsRepository([
+      tester,
+      ) async {
+    final store = _FakePromotionsStore([
       _promotion(
         id: 'PROMODRAFTPUBLISH',
         title: 'Draft publish',
@@ -120,7 +118,7 @@ void main() {
       ),
     ]);
 
-    await tester.pumpBusinessHome(repo);
+    await tester.pumpBusinessHome(store);
     final publishButton = find.ancestor(
       of: find.byIcon(Icons.publish_outlined),
       matching: find.byType(IconButton),
@@ -135,31 +133,31 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Publicar promocion'), findsOneWidget);
-    expect(repo.publishCalls, 0);
+    expect(store.publishCalls, 0);
 
     await tester.tap(find.text('Confirmar'));
     await tester.pumpAndSettle();
 
-    expect(repo.publishCalls, 1);
+    expect(store.publishCalls, 1);
     expect(find.text('Promocion publicada.'), findsOneWidget);
   });
 
   testWidgets('published promotion card shows active state and cancel action', (
-    tester,
-  ) async {
-    final repo = _FakePromotionsRepository([
+      tester,
+      ) async {
+    final store = _FakePromotionsStore([
       _promotion(
         id: 'PROMOACTIVE1234',
         title: 'A lo pobre',
         description:
-            'Llevate una hamburguesa con papas fritas totalmente gratis',
+        'Llevate una hamburguesa con papas fritas totalmente gratis',
         status: PromotionStatus.published,
         isActive: true,
         redemptionCap: 100,
       ),
     ]);
 
-    await tester.pumpBusinessHome(repo);
+    await tester.pumpBusinessHome(store);
 
     expect(find.text('A LO POBRE'), findsOneWidget);
     expect(find.text('Activa'), findsOneWidget);
@@ -170,9 +168,9 @@ void main() {
   });
 
   testWidgets('expired and cancelled promotions only expose delete action', (
-    tester,
-  ) async {
-    final repo = _FakePromotionsRepository([
+      tester,
+      ) async {
+    final store = _FakePromotionsStore([
       _promotion(
         id: 'PROMOEXPIRED123',
         title: 'Promo expirada',
@@ -190,7 +188,7 @@ void main() {
       ),
     ]);
 
-    await tester.pumpBusinessHome(repo);
+    await tester.pumpBusinessHome(store);
 
     expect(find.text('Expirada'), findsOneWidget);
     expect(find.text('Cancelada'), findsOneWidget);
@@ -201,9 +199,9 @@ void main() {
   });
 
   testWidgets('Mi Lista shows only active promotions from current business', (
-    tester,
-  ) async {
-    final repo = _FakePromotionsRepository(
+      tester,
+      ) async {
+    final store = _FakePromotionsStore(
       const [],
       activePromotions: [
         _promotion(
@@ -225,22 +223,22 @@ void main() {
       ],
     );
 
-    await tester.pumpActivePromotions(repo);
+    await tester.pumpActivePromotions(store);
 
-    expect(repo.loadActiveMineCalls, 1);
+    expect(store.loadActiveMineCalls, 1);
     expect(find.text('OWN ACTIVE'), findsOneWidget);
     expect(find.text('OTHER ACTIVE'), findsNothing);
   });
 }
 
 extension on WidgetTester {
-  Future<void> pumpBusinessHome(_FakePromotionsRepository repo) async {
+  Future<void> pumpBusinessHome(_FakePromotionsStore store) async {
     await pumpWidget(
       MaterialApp(
         home: BlocProvider<PromotionsBloc>(
-          create: (_) => PromotionsBloc(repo),
+          create: (_) => PromotionsBloc(store),
           child: BusinessHomeScreen(
-            analyticsRepository: _FakeAnalyticsRepository(),
+            analyticsStore: _FakeAnalyticsStore(),
           ),
         ),
       ),
@@ -248,11 +246,11 @@ extension on WidgetTester {
     await pumpAndSettle();
   }
 
-  Future<void> pumpActivePromotions(_FakePromotionsRepository repo) async {
+  Future<void> pumpActivePromotions(_FakePromotionsStore store) async {
     await pumpWidget(
       MaterialApp(
         home: BlocProvider<PromotionsBloc>(
-          create: (_) => PromotionsBloc(repo),
+          create: (_) => PromotionsBloc(store),
           child: const ActivePromotionsScreen(),
         ),
       ),
@@ -261,11 +259,13 @@ extension on WidgetTester {
   }
 }
 
-class _FakeAnalyticsRepository extends AnalyticsRepository {
-  _FakeAnalyticsRepository() : super(AnalyticsService(ApiClient()));
-
+/// Fake del puerto [AnalyticsStore]: Dart puro, sin tocar HTTP ni ApiClient.
+class _FakeAnalyticsStore implements AnalyticsStore {
   @override
-  Future<Result<int>> loadPromotionRedemptions(String promotionId) async =>
+  Future<Result<int>> loadPromotionRedemptions(
+      String businessId,
+      String promotionId,
+      ) async =>
       const Success(12);
 }
 
@@ -282,8 +282,8 @@ Promotion _promotion({
   DateTime? endDate,
 }) {
   return Promotion(
-    id: id,
-    businessId: businessId,
+    id: Id(id),
+    businessId: Id(businessId),
     title: title,
     description: description,
     discountAmount: 50,
@@ -297,25 +297,26 @@ Promotion _promotion({
   );
 }
 
-class _FakePromotionsRepository extends PromotionsRepository {
-  _FakePromotionsRepository(
-    this.promotions, {
-    this.activePromotions = const [],
-    Promotion? promotionById,
-  }) : promotionById =
-           promotionById ?? (promotions.isEmpty ? null : promotions.first),
-       super(PromotionsService(ApiClient()));
+/// Fake del puerto [PromotionsStore]: implementa el contrato directamente,
+/// sin heredar de ningún adaptador HTTP ni necesitar ApiClient/WebService.
+class _FakePromotionsStore implements PromotionsStore {
+  _FakePromotionsStore(
+      this.promotions, {
+        this.activePromotions = const [],
+        Promotion? promotionById,
+      }) : promotionById =
+      promotionById ?? (promotions.isEmpty ? null : promotions.first);
 
   final List<Promotion> promotions;
   final List<Promotion> activePromotions;
   final Promotion? promotionById;
+
+  static const String _currentBusinessId = 'business-1';
+
   int getByIdCalls = 0;
   int loadActiveMineCalls = 0;
   int publishCalls = 0;
   int cancelCalls = 0;
-
-  @override
-  String? get businessId => 'business-1';
 
   @override
   Future<Result<List<Promotion>>> loadMine() async => Success(promotions);
@@ -324,14 +325,18 @@ class _FakePromotionsRepository extends PromotionsRepository {
   Future<Result<List<Promotion>>> loadActiveMine() async {
     loadActiveMineCalls += 1;
     return Success(
-      activePromotions.where((p) => p.businessId == businessId).toList(),
+      activePromotions
+          .where((p) => p.businessId.value == _currentBusinessId)
+          .toList(),
     );
   }
 
   @override
   Future<Result<Promotion>> getById(String id) async {
     getByIdCalls += 1;
-    return Success(promotionById ?? promotions.firstWhere((p) => p.id == id));
+    return Success(
+      promotionById ?? promotions.firstWhere((p) => p.id.value == id),
+    );
   }
 
   @override
@@ -357,23 +362,23 @@ class _FakePromotionsRepository extends PromotionsRepository {
 
   @override
   Future<Result<void>> publish(
-    String id, {
-    bool isBusinessVerified = true,
-  }) async {
+      String id, {
+        bool isBusinessVerified = true,
+      }) async {
     publishCalls += 1;
     return const Success(null);
   }
 
   @override
   Future<Result<void>> update(
-    String id, {
-    required String title,
-    required String description,
-    required double discountAmount,
-    required DiscountType discountType,
-    required DateTime startDate,
-    required DateTime endDate,
-    required String imageKey,
-    int? redemptionCap,
-  }) async => const Success(null);
+      String id, {
+        required String title,
+        required String description,
+        required double discountAmount,
+        required DiscountType discountType,
+        required DateTime startDate,
+        required DateTime endDate,
+        required String imageKey,
+        int? redemptionCap,
+      }) async => const Success(null);
 }

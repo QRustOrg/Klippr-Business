@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:klippr/klippr/core/prefs/prefs_helper.dart';
+import 'package:klippr/klippr/shared/data/pref/prefs_helper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {

@@ -1,30 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get_it/get_it.dart';
 
-import 'package:klippr/klippr/core/network/api_client.dart';
-import 'package:klippr/klippr/core/prefs/prefs_helper.dart';
-import 'package:klippr/klippr/core/theme/app_theme.dart';
-import 'package:klippr/klippr/iam/bloc/auth_bloc.dart';
-import 'package:klippr/klippr/iam/repository/iam_repository.dart';
-import 'package:klippr/klippr/iam/services/iam_service.dart';
-import 'package:klippr/klippr/iam/views/splash_session_screen.dart';
-import 'package:klippr/klippr/promotions/bloc/promotions_bloc.dart';
-import 'package:klippr/klippr/promotions/repository/promotions_repository.dart';
-import 'package:klippr/klippr/promotions/services/promotions_service.dart';
-import 'package:klippr/klippr/redemption/bloc/redemption_bloc.dart';
-import 'package:klippr/klippr/redemption/repository/redemption_repository.dart';
-import 'package:klippr/klippr/redemption/services/redemption_service.dart';
+import 'klippr/iam/application/bloc/auth_bloc.dart';
+import 'klippr/iam/presentation/views/splash_session_screen.dart';
+import 'klippr/promotions/application/bloc/promotions_bloc.dart';
+import 'klippr/redemption/application/bloc/redemption_bloc.dart';
+import 'klippr/shared/presentation/theme/app_theme.dart';
+import 'service_locator.dart';
 
 // author: Samuel Bonifacio
 //
-// Punto de entrada de la app Klippr Business. Inicializa la persistencia ligera,
-// arma la cadena de dependencias de IAM (ApiClient -> IamService -> IamRepository
-// -> AuthBloc) y aplica el tema de marca (claro).
+// Punto de entrada de la app Klippr Business. Inicializa el ServiceLocator
+// (DI vía get_it, paridad con la guía DDD+hexagonal+BLoC) y compone los
+// blocs de cada bounded context en un único MultiBlocProvider raíz, igual
+// que la app original.
 
 Future<void> main() async {
   // Necesario antes de usar plugins (shared_preferences) previo a runApp.
   WidgetsFlutterBinding.ensureInitialized();
-  await PrefsHelper.instance.init();
+  await ServiceLocator.init();
   runApp(const KlipprBusinessApp());
 }
 
@@ -33,22 +28,13 @@ class KlipprBusinessApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final apiClient = ApiClient();
-    final iamRepository = IamRepository(IamService(apiClient));
-    final promotionsRepository =
-        PromotionsRepository(PromotionsService(apiClient));
-    final redemptionRepository =
-        RedemptionRepository(RedemptionService(apiClient));
+    final sl = GetIt.instance;
 
     return MultiBlocProvider(
       providers: [
-        BlocProvider<AuthBloc>(create: (_) => AuthBloc(iamRepository)),
-        BlocProvider<PromotionsBloc>(
-          create: (_) => PromotionsBloc(promotionsRepository),
-        ),
-        BlocProvider<RedemptionBloc>(
-          create: (_) => RedemptionBloc(redemptionRepository),
-        ),
+        BlocProvider<AuthBloc>(create: (_) => sl<AuthBloc>()),
+        BlocProvider<PromotionsBloc>(create: (_) => sl<PromotionsBloc>()),
+        BlocProvider<RedemptionBloc>(create: (_) => sl<RedemptionBloc>()),
       ],
       child: MaterialApp(
         title: 'Klippr Business',
