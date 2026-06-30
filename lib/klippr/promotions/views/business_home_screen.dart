@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../analytics/repository/analytics_repository.dart';
 import '../../analytics/services/analytics_service.dart';
 import '../../core/network/api_client.dart';
+import '../../core/prefs/prefs_helper.dart';
 import '../../core/utils/result.dart';
 import '../../core/widgets/dashed_border.dart';
 import '../../core/widgets/klippr_bottom_bar.dart';
@@ -16,6 +17,7 @@ import 'active_promotions_screen.dart';
 import 'create_promotion_screen.dart';
 import 'promo_colors.dart';
 import '../../redemption/views/redemption_scan_screen.dart';
+import '../../redemption/views/redemption_history_list_screen.dart';
 import '../../redemption/bloc/redemption_bloc.dart';
 
 // author: Samuel Bonifacio
@@ -50,11 +52,16 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
     context.read<PromotionsBloc>().add(const LoadPromotions());
   }
 
-  Future<Result<int>> _redemptionsFor(String promotionId) =>
-      _redemptionCountFutures.putIfAbsent(
+  Future<Result<int>> _redemptionsFor(String promotionId) {
+    final businessId = PrefsHelper.instance.userId ?? '';
+    return _redemptionCountFutures.putIfAbsent(
+      promotionId,
+      () => _analyticsRepository.loadPromotionRedemptions(
+        businessId,
         promotionId,
-        () => _analyticsRepository.loadPromotionRedemptions(promotionId),
-      );
+      ),
+    );
+  }
 
   void _openCreate({Promotion? promotion}) {
     final bloc = context.read<PromotionsBloc>();
@@ -89,6 +96,18 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
         builder: (_) => BlocProvider.value(
           value: bloc,
           child: const ActivePromotionsScreen(),
+        ),
+      ),
+    );
+  }
+
+  void _openHistorial() {
+    final bloc = context.read<PromotionsBloc>();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BlocProvider.value(
+          value: bloc,
+          child: const RedemptionHistoryListScreen(),
         ),
       ),
     );
@@ -251,6 +270,7 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
         onQr: () => _openCreate(),
         onInicio: () {},
         onMiLista: _openActivePromotions,
+        onHistorial: _openHistorial,
       ),
     );
   }

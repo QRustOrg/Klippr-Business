@@ -8,7 +8,7 @@ import '../../promotions/views/promo_colors.dart';
 // Portada de KlipprBottomBar/CreateBottomBar del proyecto Android.
 
 /// Pestañas de la barra inferior.
-enum KlipprTab { qr, inicio, miLista }
+enum KlipprTab { qr, inicio, miLista, historial }
 
 /// Barra de navegación inferior de Klippr Business.
 class KlipprBottomBar extends StatelessWidget {
@@ -18,12 +18,14 @@ class KlipprBottomBar extends StatelessWidget {
     this.onQr,
     this.onInicio,
     this.onMiLista,
+    this.onHistorial,
   });
 
   final KlipprTab current;
   final VoidCallback? onQr;
   final VoidCallback? onInicio;
   final VoidCallback? onMiLista;
+  final VoidCallback? onHistorial;
 
   @override
   Widget build(BuildContext context) {
@@ -46,6 +48,8 @@ class KlipprBottomBar extends StatelessWidget {
               onInicio?.call();
             case KlipprTab.miLista:
               onMiLista?.call();
+            case KlipprTab.historial:
+              onHistorial?.call();
           }
         },
         destinations: const [
@@ -63,6 +67,11 @@ class KlipprBottomBar extends StatelessWidget {
             icon: Icon(Icons.inbox_outlined, color: PromoColors.textGray),
             selectedIcon: Icon(Icons.inbox, color: PromoColors.purple),
             label: 'Mi Lista',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.receipt_long_outlined, color: PromoColors.textGray),
+            selectedIcon: Icon(Icons.receipt_long, color: PromoColors.purple),
+            label: 'Historial',
           ),
         ],
       ),
