@@ -41,6 +41,8 @@ class BusinessHomeScreen extends StatefulWidget {
 class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
   late final AnalyticsStore _analyticsStore;
   final Map<String, Future<Result<int>>> _redemptionCountFutures = {};
+  String _totalRedemptionsKey = '';
+  Future<int>? _totalRedemptionsFuture;
 
   @override
   void initState() {
@@ -62,11 +64,38 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
     );
   }
 
+  Future<int> _totalRedemptions(List<Promotion> promotions) {
+    final key = promotions.map((p) => p.id.value).join('|');
+    if (_totalRedemptionsKey == key && _totalRedemptionsFuture != null) {
+      return _totalRedemptionsFuture!;
+    }
+
+    _totalRedemptionsKey = key;
+    _totalRedemptionsFuture = _loadTotalRedemptions(promotions);
+    return _totalRedemptionsFuture!;
+  }
+
+  Future<int> _loadTotalRedemptions(List<Promotion> promotions) async {
+    if (promotions.isEmpty) return 0;
+    final counts = await Future.wait<int>(
+      promotions.map((p) async {
+        final result = await _redemptionsFor(p.id.value);
+        return result.dataOrNull ?? 0;
+      }),
+    );
+    return counts.fold<int>(0, (sum, count) => sum + count);
+  }
+
   void _openCreate({Promotion? promotion}) {
     final bloc = context.read<PromotionsBloc>();
     Navigator.of(context).push(
       PromotionsRouter.create(bloc, promotion: promotion),
     );
+  }
+
+  void _openScan() {
+    final redemptionBloc = context.read<RedemptionBloc>();
+    Navigator.of(context).push(RedemptionRouter.scan(redemptionBloc));
   }
 
   void _requestEdit(Promotion promotion) {
@@ -151,6 +180,11 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
                 return RefreshIndicator(
                   onRefresh: () async {
                     final bloc = context.read<PromotionsBloc>();
+                    setState(() {
+                      _redemptionCountFutures.clear();
+                      _totalRedemptionsKey = '';
+                      _totalRedemptionsFuture = null;
+                    });
                     bloc.add(const LoadPromotions());
                     await bloc.stream.firstWhere((s) => !s.isLoading);
                   },
@@ -161,11 +195,28 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         const SizedBox(height: 20),
+                        FutureBuilder<int>(
+                          future: _totalRedemptions(state.promotions),
+                          builder: (context, snapshot) => _DashboardHero(
+                            totalRedemptions: snapshot.data,
+                            activePromotions: state.activos,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
                         _statsGrid(state),
+                        const SizedBox(height: 16),
+                        _SuggestedPromoCard(onCreate: () => _openCreate()),
+                        const SizedBox(height: 16),
+                        _QuickActions(
+                          onScan: _openScan,
+                          onCreate: () => _openCreate(),
+                          onHistory: _openHistorial,
+                          onActivePromotions: _openActivePromotions,
+                        ),
                         const SizedBox(height: 28),
                         const Center(
                           child: Text(
-                            'Promociones Creadas',
+                            'Rendimiento por promo',
                             style: TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.bold,
@@ -261,19 +312,22 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
         Row(
           children: [
             Expanded(
-              child: _StatCard(
-                title: 'Total',
-                value: '${state.total}',
-                icon: Icons.card_giftcard,
-                iconBg: PromoColors.statPurpleBg,
-                iconTint: PromoColors.statPurpleIcon,
+              child: FutureBuilder<int>(
+                future: _totalRedemptions(state.promotions),
+                builder: (context, snapshot) => _StatCard(
+                  title: 'Canjes',
+                  value: snapshot.data?.toString() ?? '--',
+                  icon: Icons.qr_code_2,
+                  iconBg: PromoColors.statPurpleBg,
+                  iconTint: PromoColors.statPurpleIcon,
+                ),
               ),
             ),
             const SizedBox(width: 14),
             Expanded(
               child: _StatCard(
-                title: 'Actividad',
-                value: '${state.actividad}',
+                title: 'Activas',
+                value: '${state.activos}',
                 icon: Icons.north_east,
                 iconBg: PromoColors.statGreenBg,
                 iconTint: PromoColors.statGreenIcon,
@@ -286,8 +340,8 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
           children: [
             Expanded(
               child: _StatCard(
-                title: 'Activados',
-                value: '${state.activos}',
+                title: 'Publicadas',
+                value: '${state.actividad}',
                 icon: Icons.check,
                 iconBg: PromoColors.statBlueBg,
                 iconTint: PromoColors.statBlueIcon,
@@ -306,6 +360,232 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
           ],
         ),
       ],
+    );
+  }
+}
+
+class _DashboardHero extends StatelessWidget {
+  const _DashboardHero({
+    required this.totalRedemptions,
+    required this.activePromotions,
+  });
+
+  final int? totalRedemptions;
+  final int activePromotions;
+
+  @override
+  Widget build(BuildContext context) {
+    final canjes = totalRedemptions?.toString() ?? '--';
+    return Container(
+      decoration: BoxDecoration(
+        color: PromoColors.purple,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Resumen de ventas',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '$activePromotions activas',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Tus promos tienen $canjes canjes hasta la fecha',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 25,
+              height: 1.12,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0,
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Mide que ofertas mueven clientes y repitelas cuando funcionan.',
+            style: TextStyle(
+              color: Color(0xFFF7F3FF),
+              fontSize: 14,
+              height: 1.35,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SuggestedPromoCard extends StatelessWidget {
+  const _SuggestedPromoCard({required this.onCreate});
+
+  final VoidCallback onCreate;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: PromoColors.fieldBg,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.auto_awesome,
+              color: PromoColors.purple,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Promo sugerida',
+                  style: TextStyle(
+                    color: PromoColors.textDark,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Activa una oferta corta para mover horas bajas.',
+                  style: TextStyle(
+                    color: PromoColors.textGray,
+                    fontSize: 13,
+                    height: 1.25,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: onCreate,
+            child: const Text('Crear'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuickActions extends StatelessWidget {
+  const _QuickActions({
+    required this.onScan,
+    required this.onCreate,
+    required this.onHistory,
+    required this.onActivePromotions,
+  });
+
+  final VoidCallback onScan;
+  final VoidCallback onCreate;
+  final VoidCallback onHistory;
+  final VoidCallback onActivePromotions;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        _QuickAction(
+          icon: Icons.qr_code_scanner,
+          label: 'Escanear',
+          onTap: onScan,
+        ),
+        _QuickAction(icon: Icons.add, label: 'Nueva', onTap: onCreate),
+        _QuickAction(
+          icon: Icons.receipt_long_outlined,
+          label: 'Historial',
+          onTap: onHistory,
+        ),
+        _QuickAction(
+          icon: Icons.inbox_outlined,
+          label: 'Activas',
+          onTap: onActivePromotions,
+        ),
+      ],
+    );
+  }
+}
+
+class _QuickAction extends StatelessWidget {
+  const _QuickAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: PromoColors.statPurpleBg,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: PromoColors.purple, size: 22),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: PromoColors.textDark,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

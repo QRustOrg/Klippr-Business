@@ -39,6 +39,7 @@ dependencies:
   flutter_bloc: ^9.1.1
   shared_preferences: ^2.5.5
   mobile_scanner: ^5.2.3
+  get_it: ^8.0.3
 
 dev_dependencies:
   flutter_test:
