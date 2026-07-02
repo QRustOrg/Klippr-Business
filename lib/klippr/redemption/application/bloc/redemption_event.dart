@@ -12,6 +12,11 @@ class ConfirmToken extends RedemptionEvent {
   final String uniqueToken;
 }
 
+class ConfirmRedemptionById extends RedemptionEvent {
+  const ConfirmRedemptionById({required this.redemptionId});
+  final String redemptionId;
+}
+
 class LoadHistory extends RedemptionEvent {
   const LoadHistory({required this.promotionId});
   final String promotionId;

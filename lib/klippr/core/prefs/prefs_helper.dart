@@ -27,6 +27,7 @@ class PrefsHelper {
   // Claves de almacenamiento.
   static const String _kToken = 'session_token';
   static const String _kUserId = 'user_id';
+  static const String _kProfileId = 'profile_id';
   static const String _kRememberMe = 'remember_me';
   static const String _kRememberedEmail = 'remembered_email';
   static const String _kRememberedPassword = 'remembered_password';
@@ -61,6 +62,14 @@ class PrefsHelper {
   Future<void> setUserId(String id) => _store.setString(_kUserId, id);
 
   Future<void> clearUserId() => _store.remove(_kUserId);
+
+  // --- Id de perfil Business ---------------------------------------------
+
+  String? get profileId => _store.getString(_kProfileId);
+
+  Future<void> setProfileId(String id) => _store.setString(_kProfileId, id);
+
+  Future<void> clearProfileId() => _store.remove(_kProfileId);
 
   // --- Usuario recordado ---------------------------------------------------
 

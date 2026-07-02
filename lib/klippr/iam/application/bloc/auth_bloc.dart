@@ -22,6 +22,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<ResetFlagsConsumed>(_onConsumeFlags);
     on<ErrorConsumed>(_onConsumeError);
     on<CustomerBlockConsumed>(_onConsumeCustomerBlock);
+    on<SignOutRequested>(_onSignOut);
   }
 
   final AuthenticationStore _store;
@@ -38,10 +39,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     final res = await _store.signIn(e.email, e.password);
     await res.when(
       onSuccess: (user) => _onAuthSuccess(user, emit),
-      onFailure: (err) async => emit(state.copyWith(
-        isLoading: false,
-        error: err.message,
-      )),
+      onFailure: (err) async =>
+          emit(state.copyWith(isLoading: false, error: err.message)),
     );
   }
 
@@ -65,10 +64,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     );
     await res.when(
       onSuccess: (user) => _onAuthSuccess(user, emit),
-      onFailure: (err) async => emit(state.copyWith(
-        isLoading: false,
-        error: err.message,
-      )),
+      onFailure: (err) async =>
+          emit(state.copyWith(isLoading: false, error: err.message)),
     );
   }
 
@@ -80,11 +77,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     if (!_isAllowed(user.role)) {
       await _store.signOut();
-      emit(state.copyWith(
-        isLoading: false,
-        user: null,
-        customerBlocked: true,
-      ));
+      emit(state.copyWith(isLoading: false, user: null, customerBlocked: true));
       return;
     }
     emit(state.copyWith(isLoading: false, user: user));
@@ -101,15 +94,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(state.copyWith(isLoading: true, error: null));
     final res = await _store.forgotPassword(e.email);
     res.when(
-      onSuccess: (_) => emit(state.copyWith(
-        isLoading: false,
-        emailVerified: true,
-        forgotEmail: e.email.trim(),
-      )),
-      onFailure: (err) => emit(state.copyWith(
-        isLoading: false,
-        error: err.message,
-      )),
+      onSuccess: (_) => emit(
+        state.copyWith(
+          isLoading: false,
+          emailVerified: true,
+          forgotEmail: e.email.trim(),
+        ),
+      ),
+      onFailure: (err) =>
+          emit(state.copyWith(isLoading: false, error: err.message)),
     );
   }
 
@@ -137,21 +130,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(state.copyWith(isLoading: true, error: null));
     final res = await _store.resetPassword(email, e.newPassword);
     res.when(
-      onSuccess: (_) => emit(state.copyWith(isLoading: false, resetSuccess: true)),
-      onFailure: (err) => emit(state.copyWith(
-        isLoading: false,
-        error: err.message,
-      )),
+      onSuccess: (_) =>
+          emit(state.copyWith(isLoading: false, resetSuccess: true)),
+      onFailure: (err) =>
+          emit(state.copyWith(isLoading: false, error: err.message)),
     );
   }
 
   void _onConsumeFlags(ResetFlagsConsumed e, Emitter<AuthState> emit) {
     // Conserva forgotEmail; limpia el resto de flags del flujo.
-    emit(state.copyWith(
-      emailVerified: false,
-      resetSuccess: false,
-      error: null,
-    ));
+    emit(
+      state.copyWith(emailVerified: false, resetSuccess: false, error: null),
+    );
   }
 
   void _onConsumeError(ErrorConsumed e, Emitter<AuthState> emit) {
@@ -163,5 +153,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) {
     emit(state.copyWith(customerBlocked: false));
+  }
+
+  Future<void> _onSignOut(SignOutRequested e, Emitter<AuthState> emit) async {
+    await _store.signOut();
+    emit(const AuthState());
   }
 }

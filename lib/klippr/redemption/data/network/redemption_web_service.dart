@@ -1,5 +1,6 @@
 import '../../../shared/data/network/api_client.dart';
 import '../../../shared/data/network/result.dart';
+import 'requests/confirm_redemption_request.dart';
 
 // author: Samuel Bonifacio
 //
@@ -20,6 +21,14 @@ class RedemptionWebService {
       _api.get('$_base/businesses/$businessId');
 
   /// Confirma una redención por su token único.
-  Future<Result<dynamic>> confirmByToken(String uniqueToken) =>
-      _api.post('$_base/tokens/$uniqueToken/confirm');
+  Future<Result<dynamic>> confirmByToken(
+    String uniqueToken,
+    ConfirmRedemptionRequest body,
+  ) => _api.post('$_base/tokens/$uniqueToken/confirm', body: body.toJson());
+
+  /// Confirma una redención por su identificador interno numérico.
+  Future<Result<dynamic>> confirmById(
+    String redemptionId,
+    ConfirmRedemptionRequest body,
+  ) => _api.post('$_base/$redemptionId/confirm', body: body.toJson());
 }

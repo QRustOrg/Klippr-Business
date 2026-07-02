@@ -53,7 +53,7 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
   }
 
   Future<Result<int>> _redemptionsFor(String promotionId) {
-    final businessId = PrefsHelper.instance.userId ?? '';
+    final businessId = _safeBusinessId();
     return _redemptionCountFutures.putIfAbsent(
       promotionId,
       () => _analyticsRepository.loadPromotionRedemptions(
@@ -61,6 +61,14 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
         promotionId,
       ),
     );
+  }
+
+  String _safeBusinessId() {
+    try {
+      return PrefsHelper.instance.userId ?? '';
+    } on StateError {
+      return '';
+    }
   }
 
   void _openCreate({Promotion? promotion}) {
@@ -377,8 +385,7 @@ class _HomeTopBar extends StatelessWidget {
                     children: [
                       IconButton(
                         onPressed: () {
-                          final redemptionBloc =
-                              context.read<RedemptionBloc>();
+                          final redemptionBloc = context.read<RedemptionBloc>();
                           Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (_) => BlocProvider.value(

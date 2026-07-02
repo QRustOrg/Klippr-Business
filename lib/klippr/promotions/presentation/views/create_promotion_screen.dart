@@ -32,12 +32,12 @@ enum _PromotionCategory {
   final String label;
 
   String get key => switch (this) {
-        _PromotionCategory.general => 'general',
-        _PromotionCategory.food => 'food',
-        _PromotionCategory.health => 'health',
-        _PromotionCategory.entertainment => 'entertainment',
-        _PromotionCategory.sports => 'sports',
-      };
+    _PromotionCategory.general => 'general',
+    _PromotionCategory.food => 'food',
+    _PromotionCategory.health => 'health',
+    _PromotionCategory.entertainment => 'entertainment',
+    _PromotionCategory.sports => 'sports',
+  };
 }
 
 /// Tipos de condición de uso.
@@ -160,7 +160,9 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
   int? _redemptionCap() {
     for (final c in _conditions) {
       if (c.type == _ConditionType.usageLimit) {
-        final n = int.tryParse(RegExp(r'\d+').firstMatch(c.value)?.group(0) ?? '');
+        final n = int.tryParse(
+          RegExp(r'\d+').firstMatch(c.value)?.group(0) ?? '',
+        );
         if (n != null) return n;
       }
     }
@@ -222,28 +224,32 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
     final start = DateTime.now();
 
     if (_isEdit) {
-      bloc.add(UpdatePromotion(
-        id: widget.promotion!.id.value,
-        title: _title.text.trim(),
-        description: _description.text.trim(),
-        discountAmount: amount,
-        discountType: DiscountType.percentage,
-        startDate: widget.promotion!.startDate ?? start,
-        endDate: _endDateValue!,
-        imageKey: _selectedImage!.key,
-        redemptionCap: cap,
-      ));
+      bloc.add(
+        UpdatePromotion(
+          id: widget.promotion!.id.value,
+          title: _title.text.trim(),
+          description: _description.text.trim(),
+          discountAmount: amount,
+          discountType: DiscountType.percentage,
+          startDate: widget.promotion!.startDate ?? start,
+          endDate: _endDateValue!,
+          imageKey: _selectedImage!.key,
+          redemptionCap: cap,
+        ),
+      );
     } else {
-      bloc.add(CreatePromotion(
-        title: _title.text.trim(),
-        description: _description.text.trim(),
-        discountAmount: amount,
-        discountType: DiscountType.percentage,
-        startDate: start,
-        endDate: _endDateValue!,
-        imageKey: _selectedImage!.key,
-        redemptionCap: cap,
-      ));
+      bloc.add(
+        CreatePromotion(
+          title: _title.text.trim(),
+          description: _description.text.trim(),
+          discountAmount: amount,
+          discountType: DiscountType.percentage,
+          startDate: start,
+          endDate: _endDateValue!,
+          imageKey: _selectedImage!.key,
+          redemptionCap: cap,
+        ),
+      );
     }
   }
 
@@ -255,9 +261,9 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
           context.read<PromotionsBloc>().add(const PromotionsFlagsConsumed());
           Navigator.of(context).maybePop();
         } else if (state.error != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.error!)),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(state.error!)));
           context.read<PromotionsBloc>().add(const PromotionsFlagsConsumed());
         }
       },
@@ -357,8 +363,10 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                     isError: _dateError,
                     readOnly: true,
                     onTap: _pickDate,
-                    suffixIcon: const Icon(Icons.calendar_month,
-                        color: PromoColors.textGray),
+                    suffixIcon: const Icon(
+                      Icons.calendar_month,
+                      color: PromoColors.textGray,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   _PromotionImageSelector(
@@ -395,8 +403,10 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
             ),
             if (_conditions.isEmpty)
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
                 child: DashedBorder(
                   color: PromoColors.dash,
                   child: const Padding(
@@ -404,8 +414,10 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                     child: Center(
                       child: Text(
                         'No hay condiciones ¡Agregar algunas!',
-                        style:
-                            TextStyle(fontSize: 14, color: Color(0xFF666666)),
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF666666),
+                        ),
                       ),
                     ),
                   ),
@@ -413,18 +425,19 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
               )
             else
               ..._conditions.asMap().entries.map(
-                    (e) => Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 4),
-                      child: _ConditionRow(
-                        item: e.value,
-                        onTypeChange: (t) => setState(() => e.value.type = t),
-                        onValueChange: (v) => e.value.value = v,
-                        onDelete: () =>
-                            setState(() => _conditions.removeAt(e.key)),
-                      ),
-                    ),
+                (e) => Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
                   ),
+                  child: _ConditionRow(
+                    item: e.value,
+                    onTypeChange: (t) => setState(() => e.value.type = t),
+                    onValueChange: (v) => e.value.value = v,
+                    onDelete: () => setState(() => _conditions.removeAt(e.key)),
+                  ),
+                ),
+              ),
             const SizedBox(height: 8),
             const _SectionHeader(title: 'Código QR'),
             Padding(
@@ -435,8 +448,7 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: BlocBuilder<PromotionsBloc, PromotionsState>(
-                buildWhen: (a, b) =>
-                    a.actionInProgress != b.actionInProgress,
+                buildWhen: (a, b) => a.actionInProgress != b.actionInProgress,
                 builder: (context, state) {
                   return Row(
                     children: [
@@ -448,7 +460,9 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                           style: OutlinedButton.styleFrom(
                             minimumSize: const Size(0, 52),
                             side: const BorderSide(
-                                color: PromoColors.purple, width: 1.5),
+                              color: PromoColors.purple,
+                              width: 1.5,
+                            ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(50),
                             ),
@@ -595,9 +609,9 @@ class _PromoField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     OutlineInputBorder border(Color color) => OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: color),
-        );
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: color),
+    );
 
     return TextField(
       controller: controller,
@@ -615,10 +629,12 @@ class _PromoField extends StatelessWidget {
         fillColor: PromoColors.fieldBg,
         suffixIcon: suffixIcon,
         border: border(Colors.transparent),
-        enabledBorder:
-            border(isError ? PromoColors.errorRed : Colors.transparent),
-        focusedBorder:
-            border(isError ? PromoColors.errorRed : PromoColors.purple),
+        enabledBorder: border(
+          isError ? PromoColors.errorRed : Colors.transparent,
+        ),
+        focusedBorder: border(
+          isError ? PromoColors.errorRed : PromoColors.purple,
+        ),
       ),
     );
   }
@@ -642,8 +658,10 @@ class _CategoryDropdown extends StatelessWidget {
         child: DropdownButton<_PromotionCategory>(
           value: value,
           isExpanded: true,
-          icon: const Icon(Icons.keyboard_arrow_down,
-              color: PromoColors.textGray),
+          icon: const Icon(
+            Icons.keyboard_arrow_down,
+            color: PromoColors.textGray,
+          ),
           style: const TextStyle(color: PromoColors.textDark, fontSize: 14),
           onChanged: (c) {
             if (c != null) onChanged(c);
@@ -705,8 +723,10 @@ class _PromotionImageSelector extends StatelessWidget {
                           ),
                   ),
                   Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
                     child: Row(
                       children: [
                         Expanded(
@@ -947,16 +967,24 @@ class _ConditionRow extends StatelessWidget {
                       child: DropdownButton<_ConditionType>(
                         value: item.type,
                         isExpanded: true,
-                        hint: const Text('Elige una opcion',
-                            style: TextStyle(fontSize: 13)),
+                        hint: const Text(
+                          'Elige una opcion',
+                          style: TextStyle(fontSize: 13),
+                        ),
                         style: const TextStyle(
-                            color: PromoColors.textDark, fontSize: 13),
+                          color: PromoColors.textDark,
+                          fontSize: 13,
+                        ),
                         onChanged: (t) {
                           if (t != null) onTypeChange(t);
                         },
                         items: _ConditionType.values
-                            .map((t) => DropdownMenuItem(
-                                value: t, child: Text(t.label)))
+                            .map(
+                              (t) => DropdownMenuItem(
+                                value: t,
+                                child: Text(t.label),
+                              ),
+                            )
                             .toList(),
                       ),
                     ),
@@ -964,8 +992,11 @@ class _ConditionRow extends StatelessWidget {
                 ),
                 IconButton(
                   onPressed: onDelete,
-                  icon: const Icon(Icons.delete,
-                      color: PromoColors.errorRed, size: 22),
+                  icon: const Icon(
+                    Icons.delete,
+                    color: PromoColors.errorRed,
+                    size: 22,
+                  ),
                   tooltip: 'Eliminar condición',
                 ),
               ],
@@ -977,8 +1008,10 @@ class _ConditionRow extends StatelessWidget {
               style: const TextStyle(fontSize: 13),
               decoration: InputDecoration(
                 hintText: 'Valor...',
-                hintStyle:
-                    const TextStyle(fontSize: 12, color: PromoColors.textGray),
+                hintStyle: const TextStyle(
+                  fontSize: 12,
+                  color: PromoColors.textGray,
+                ),
                 filled: true,
                 fillColor: const Color(0xFFF5F5F5),
                 border: OutlineInputBorder(

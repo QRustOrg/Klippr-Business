@@ -20,6 +20,14 @@ class AnalyticsWebService {
   Future<Result<dynamic>> getCampaignMetrics(String campaignId) =>
       _api.get('$_base/campaign/$campaignId');
 
+  /// Obtiene el dashboard agregado del negocio.
+  Future<Result<dynamic>> getDashboard(String businessId) =>
+      _api.get('$_base/dashboard/$businessId');
+
+  /// Registra incrementos agregados de métricas.
+  Future<Result<dynamic>> updateMetrics(Map<String, dynamic> body) =>
+      _api.post('$_base/metrics', body: body);
+
   /// Lista las redenciones de un negocio (usado para contar por promoción).
   Future<Result<dynamic>> getRedemptionsByBusiness(String businessId) =>
       _api.get('$_redemptionsBase/businesses/$businessId');

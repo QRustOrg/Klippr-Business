@@ -2,6 +2,7 @@ import 'package:get_it/get_it.dart';
 
 import 'klippr/analytics/analytics_dependencies.dart';
 import 'klippr/iam/iam_dependencies.dart';
+import 'klippr/profile/profile_dependencies.dart';
 import 'klippr/promotions/promotions_dependencies.dart';
 import 'klippr/redemption/redemption_dependencies.dart';
 import 'klippr/shared/data/pref/prefs_helper.dart';
@@ -32,5 +33,6 @@ abstract final class ServiceLocator {
     PromotionsDependencies.register(sl);
     RedemptionDependencies.register(sl);
     AnalyticsDependencies.register(sl);
+    ProfileDependencies.register(sl);
   }
 }

@@ -20,7 +20,7 @@ import '../network/requests/sign_up_business_request.dart';
 class HttpAuthenticationStore implements AuthenticationStore {
   /// Crea un [HttpAuthenticationStore] sobre [_service].
   HttpAuthenticationStore(this._service, {PrefsHelper? prefs})
-      : _prefs = prefs ?? PrefsHelper.instance;
+    : _prefs = prefs ?? PrefsHelper.instance;
 
   final IamWebService _service;
   final PrefsHelper _prefs;
@@ -88,6 +88,7 @@ class HttpAuthenticationStore implements AuthenticationStore {
   Future<void> signOut() async {
     await _prefs.clearToken();
     await _prefs.clearUserId();
+    await _prefs.clearProfileId();
   }
 
   Future<Result<AuthenticatedUser>> _persistAndReturn(
