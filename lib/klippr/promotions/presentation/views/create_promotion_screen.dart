@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -16,10 +14,10 @@ import 'promo_colors.dart';
 // author: Samuel Bonifacio
 //
 // Formulario de creación/edición de promoción ("+ QR"). Port 1:1 de
-// CreatePromotionScreen.kt: información, condiciones de uso, código QR y
-// acciones. Conectado al PromotionsBloc.
+// CreatePromotionScreen.kt: información, condiciones de uso y acciones.
+// Conectado al PromotionsBloc.
 //
-// category, condiciones y QR son visuales (el backend no los recibe); solo se
+// category y condiciones son visuales (el backend no los recibe); solo se
 // deriva redemptionCap de la condición "Límite total de usos".
 
 /// Categorías de promoción (solo visual; el backend no las recibe).
@@ -60,13 +58,6 @@ class _Condition {
   String value = '';
 }
 
-String _generateQrCode() {
-  const hex = '0123456789ABCDEFabcdef';
-  final rnd = Random();
-  final code = List.generate(12, (_) => hex[rnd.nextInt(hex.length)]).join();
-  return 'PROM$code';
-}
-
 _PromotionCategory _categoryFromKey(String categoryKey) {
   for (final category in _PromotionCategory.values) {
     if (category.key == categoryKey) return category;
@@ -94,7 +85,6 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
   _PromotionCategory _category = _PromotionCategory.general;
   PromotionImageOption? _selectedImage;
   final List<_Condition> _conditions = [];
-  String _qrCode = _generateQrCode();
   DateTime? _endDateValue;
 
   bool _titleError = false;
@@ -436,13 +426,10 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                     ),
                   ),
             const SizedBox(height: 8),
-            const _SectionHeader(title: 'Codigo QR'),
+            const _SectionHeader(title: 'Código QR'),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _QrSection(
-                qrCode: _qrCode,
-                onRefresh: () => setState(() => _qrCode = _generateQrCode()),
-              ),
+              child: const _QrGenerationNotice(),
             ),
             const SizedBox(height: 24),
             Padding(
@@ -1015,11 +1002,8 @@ class _ConditionRow extends StatelessWidget {
   }
 }
 
-class _QrSection extends StatelessWidget {
-  const _QrSection({required this.qrCode, required this.onRefresh});
-
-  final String qrCode;
-  final VoidCallback onRefresh;
+class _QrGenerationNotice extends StatelessWidget {
+  const _QrGenerationNotice();
 
   @override
   Widget build(BuildContext context) {
@@ -1029,45 +1013,33 @@ class _QrSection extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
       ),
       padding: const EdgeInsets.all(20),
-      child: Stack(
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Column(
-            children: [
-              Material(
-                elevation: 2,
-                borderRadius: BorderRadius.circular(16),
-                color: Colors.white,
-                child: const Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Icon(Icons.qr_code_2, color: Colors.black, size: 160),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                qrCode,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: Colors.black,
-                ),
-              ),
-            ],
-          ),
-          Align(
-            alignment: Alignment.topRight,
-            child: Container(
-              decoration: const BoxDecoration(
-                  color: Colors.white, shape: BoxShape.circle),
-              child: IconButton(
-                onPressed: onRefresh,
-                iconSize: 16,
-                constraints:
-                    const BoxConstraints.tightFor(width: 32, height: 32),
-                padding: EdgeInsets.zero,
-                icon: const Icon(Icons.refresh, color: PromoColors.textGray),
-                tooltip: 'Regenerar QR',
-              ),
+          Material(
+            elevation: 2,
+            borderRadius: BorderRadius.all(Radius.circular(16)),
+            color: Colors.white,
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Icon(Icons.qr_code_2, color: PromoColors.purple, size: 96),
             ),
+          ),
+          SizedBox(height: 12),
+          Text(
+            'El QR se genera cuando un consumidor canjea esta promoción',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              color: PromoColors.textDark,
+            ),
+          ),
+          SizedBox(height: 6),
+          Text(
+            'Este formulario solo publica la promoción. El código canjeable se crea desde Klippr Consumer mediante POST /api/redemptions.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12, color: PromoColors.textGray),
           ),
         ],
       ),
