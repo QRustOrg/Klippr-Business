@@ -4,6 +4,7 @@ import 'package:get_it/get_it.dart';
 
 import 'klippr/iam/application/bloc/auth_bloc.dart';
 import 'klippr/iam/presentation/views/splash_session_screen.dart';
+import 'klippr/profile/application/bloc/profile_bloc.dart';
 import 'klippr/promotions/application/bloc/promotions_bloc.dart';
 import 'klippr/redemption/application/bloc/redemption_bloc.dart';
 import 'klippr/shared/presentation/theme/app_theme.dart';
@@ -35,6 +36,7 @@ class KlipprBusinessApp extends StatelessWidget {
         BlocProvider<AuthBloc>(create: (_) => sl<AuthBloc>()),
         BlocProvider<PromotionsBloc>(create: (_) => sl<PromotionsBloc>()),
         BlocProvider<RedemptionBloc>(create: (_) => sl<RedemptionBloc>()),
+        BlocProvider<ProfileBloc>(create: (_) => sl<ProfileBloc>()),
       ],
       child: MaterialApp(
         title: 'Klippr Business',

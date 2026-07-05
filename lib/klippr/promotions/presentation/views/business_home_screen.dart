@@ -4,6 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../analytics/data/network/analytics_web_service.dart';
 import '../../../analytics/data/stores/http_analytics_store.dart';
 import '../../../analytics/domain/stores/analytics_store.dart';
+import '../../../profile/application/bloc/profile_bloc.dart';
+import '../../../profile/presentation/navigation/profile_router.dart';
 import '../../../redemption/application/bloc/redemption_bloc.dart';
 import '../../../redemption/presentation/navigation/redemption_router.dart';
 import '../../../shared/data/network/api_client.dart';
@@ -27,10 +29,8 @@ import 'promo_colors.dart';
 
 /// Dashboard de inicio del negocio.
 class BusinessHomeScreen extends StatefulWidget {
-  const BusinessHomeScreen({
-    super.key,
-    AnalyticsStore? analyticsStore,
-  }) : _analyticsStore = analyticsStore;
+  const BusinessHomeScreen({super.key, AnalyticsStore? analyticsStore})
+    : _analyticsStore = analyticsStore;
 
   final AnalyticsStore? _analyticsStore;
 
@@ -54,14 +54,19 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
   }
 
   Future<Result<int>> _redemptionsFor(String promotionId) {
-    final businessId = PrefsHelper.instance.userId ?? '';
+    final businessId = _safeBusinessId();
     return _redemptionCountFutures.putIfAbsent(
       promotionId,
-      () => _analyticsStore.loadPromotionRedemptions(
-        businessId,
-        promotionId,
-      ),
+      () => _analyticsStore.loadPromotionRedemptions(businessId, promotionId),
     );
+  }
+
+  String _safeBusinessId() {
+    try {
+      return PrefsHelper.instance.userId ?? '';
+    } on StateError {
+      return '';
+    }
   }
 
   Future<int> _totalRedemptions(List<Promotion> promotions) {
@@ -88,9 +93,9 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
 
   void _openCreate({Promotion? promotion}) {
     final bloc = context.read<PromotionsBloc>();
-    Navigator.of(context).push(
-      PromotionsRouter.create(bloc, promotion: promotion),
-    );
+    Navigator.of(
+      context,
+    ).push(PromotionsRouter.create(bloc, promotion: promotion));
   }
 
   void _openScan() {
@@ -245,7 +250,9 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
                                 child: _PromotionCard(
                                   promotion: p,
                                   onEdit: () => _requestEdit(p),
-                                  redemptionsFuture: _redemptionsFor(p.id.value),
+                                  redemptionsFuture: _redemptionsFor(
+                                    p.id.value,
+                                  ),
                                   onPublish: () async {
                                     if (state.actionInProgress) return;
                                     if (await _confirm(
@@ -398,7 +405,10 @@ class _DashboardHero extends StatelessWidget {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.18),
                   borderRadius: BorderRadius.circular(999),
@@ -493,10 +503,7 @@ class _SuggestedPromoCard extends StatelessWidget {
               ],
             ),
           ),
-          TextButton(
-            onPressed: onCreate,
-            child: const Text('Crear'),
-          ),
+          TextButton(onPressed: onCreate, child: const Text('Crear')),
         ],
       ),
     );
@@ -608,17 +615,24 @@ class _HomeTopBar extends StatelessWidget {
               children: [
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: Container(
-                    width: 46,
-                    height: 46,
-                    decoration: const BoxDecoration(
-                      color: PromoColors.avatarBg,
-                      shape: BoxShape.circle,
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: Image.asset(
-                      'assets/images/klippr_mascot.png',
-                      fit: BoxFit.cover,
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: () {
+                      final bloc = context.read<ProfileBloc>();
+                      Navigator.of(context).push(ProfileRouter.profile(bloc));
+                    },
+                    child: Container(
+                      width: 46,
+                      height: 46,
+                      decoration: const BoxDecoration(
+                        color: PromoColors.avatarBg,
+                        shape: BoxShape.circle,
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Image.asset(
+                        'assets/images/klippr_mascot.png',
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   ),
                 ),
@@ -637,11 +651,10 @@ class _HomeTopBar extends StatelessWidget {
                     children: [
                       IconButton(
                         onPressed: () {
-                          final redemptionBloc =
-                              context.read<RedemptionBloc>();
-                          Navigator.of(context).push(
-                            RedemptionRouter.scan(redemptionBloc),
-                          );
+                          final redemptionBloc = context.read<RedemptionBloc>();
+                          Navigator.of(
+                            context,
+                          ).push(RedemptionRouter.scan(redemptionBloc));
                         },
                         icon: const Icon(
                           Icons.qr_code_2,

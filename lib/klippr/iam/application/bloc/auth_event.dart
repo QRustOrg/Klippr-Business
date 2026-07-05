@@ -67,3 +67,8 @@ class ErrorConsumed extends AuthEvent {
 class CustomerBlockConsumed extends AuthEvent {
   const CustomerBlockConsumed();
 }
+
+/// Solicita cerrar la sesión actual.
+class SignOutRequested extends AuthEvent {
+  const SignOutRequested();
+}

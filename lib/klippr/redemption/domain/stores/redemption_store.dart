@@ -19,6 +19,9 @@ abstract interface class RedemptionStore {
   /// Confirma una redención identificada por su token único.
   Future<Result<Redemption>> confirmToken(String uniqueToken);
 
+  /// Confirma una redención identificada por id interno numérico.
+  Future<Result<Redemption>> confirmById(String redemptionId);
+
   /// Carga el historial de redenciones de una promoción.
   Future<Result<List<Redemption>>> loadHistory(String promotionId);
 }

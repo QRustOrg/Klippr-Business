@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -16,10 +14,10 @@ import 'promo_colors.dart';
 // author: Samuel Bonifacio
 //
 // Formulario de creación/edición de promoción ("+ QR"). Port 1:1 de
-// CreatePromotionScreen.kt: información, condiciones de uso, código QR y
-// acciones. Conectado al PromotionsBloc.
+// CreatePromotionScreen.kt: información, condiciones de uso y acciones.
+// Conectado al PromotionsBloc.
 //
-// category, condiciones y QR son visuales (el backend no los recibe); solo se
+// category y condiciones son visuales (el backend no los recibe); solo se
 // deriva redemptionCap de la condición "Límite total de usos".
 
 /// Categorías de promoción (solo visual; el backend no las recibe).
@@ -34,12 +32,12 @@ enum _PromotionCategory {
   final String label;
 
   String get key => switch (this) {
-        _PromotionCategory.general => 'general',
-        _PromotionCategory.food => 'food',
-        _PromotionCategory.health => 'health',
-        _PromotionCategory.entertainment => 'entertainment',
-        _PromotionCategory.sports => 'sports',
-      };
+    _PromotionCategory.general => 'general',
+    _PromotionCategory.food => 'food',
+    _PromotionCategory.health => 'health',
+    _PromotionCategory.entertainment => 'entertainment',
+    _PromotionCategory.sports => 'sports',
+  };
 }
 
 /// Tipos de condición de uso.
@@ -58,13 +56,6 @@ enum _ConditionType {
 class _Condition {
   _ConditionType? type;
   String value = '';
-}
-
-String _generateQrCode() {
-  const hex = '0123456789ABCDEFabcdef';
-  final rnd = Random();
-  final code = List.generate(12, (_) => hex[rnd.nextInt(hex.length)]).join();
-  return 'PROM$code';
 }
 
 _PromotionCategory _categoryFromKey(String categoryKey) {
@@ -94,7 +85,6 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
   _PromotionCategory _category = _PromotionCategory.general;
   PromotionImageOption? _selectedImage;
   final List<_Condition> _conditions = [];
-  String _qrCode = _generateQrCode();
   DateTime? _endDateValue;
 
   bool _titleError = false;
@@ -170,7 +160,9 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
   int? _redemptionCap() {
     for (final c in _conditions) {
       if (c.type == _ConditionType.usageLimit) {
-        final n = int.tryParse(RegExp(r'\d+').firstMatch(c.value)?.group(0) ?? '');
+        final n = int.tryParse(
+          RegExp(r'\d+').firstMatch(c.value)?.group(0) ?? '',
+        );
         if (n != null) return n;
       }
     }
@@ -232,28 +224,32 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
     final start = DateTime.now();
 
     if (_isEdit) {
-      bloc.add(UpdatePromotion(
-        id: widget.promotion!.id.value,
-        title: _title.text.trim(),
-        description: _description.text.trim(),
-        discountAmount: amount,
-        discountType: DiscountType.percentage,
-        startDate: widget.promotion!.startDate ?? start,
-        endDate: _endDateValue!,
-        imageKey: _selectedImage!.key,
-        redemptionCap: cap,
-      ));
+      bloc.add(
+        UpdatePromotion(
+          id: widget.promotion!.id.value,
+          title: _title.text.trim(),
+          description: _description.text.trim(),
+          discountAmount: amount,
+          discountType: DiscountType.percentage,
+          startDate: widget.promotion!.startDate ?? start,
+          endDate: _endDateValue!,
+          imageKey: _selectedImage!.key,
+          redemptionCap: cap,
+        ),
+      );
     } else {
-      bloc.add(CreatePromotion(
-        title: _title.text.trim(),
-        description: _description.text.trim(),
-        discountAmount: amount,
-        discountType: DiscountType.percentage,
-        startDate: start,
-        endDate: _endDateValue!,
-        imageKey: _selectedImage!.key,
-        redemptionCap: cap,
-      ));
+      bloc.add(
+        CreatePromotion(
+          title: _title.text.trim(),
+          description: _description.text.trim(),
+          discountAmount: amount,
+          discountType: DiscountType.percentage,
+          startDate: start,
+          endDate: _endDateValue!,
+          imageKey: _selectedImage!.key,
+          redemptionCap: cap,
+        ),
+      );
     }
   }
 
@@ -265,9 +261,9 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
           context.read<PromotionsBloc>().add(const PromotionsFlagsConsumed());
           Navigator.of(context).maybePop();
         } else if (state.error != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.error!)),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(state.error!)));
           context.read<PromotionsBloc>().add(const PromotionsFlagsConsumed());
         }
       },
@@ -367,8 +363,10 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                     isError: _dateError,
                     readOnly: true,
                     onTap: _pickDate,
-                    suffixIcon: const Icon(Icons.calendar_month,
-                        color: PromoColors.textGray),
+                    suffixIcon: const Icon(
+                      Icons.calendar_month,
+                      color: PromoColors.textGray,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   _PromotionImageSelector(
@@ -405,8 +403,10 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
             ),
             if (_conditions.isEmpty)
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
                 child: DashedBorder(
                   color: PromoColors.dash,
                   child: const Padding(
@@ -414,8 +414,10 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                     child: Center(
                       child: Text(
                         'No hay condiciones ¡Agregar algunas!',
-                        style:
-                            TextStyle(fontSize: 14, color: Color(0xFF666666)),
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF666666),
+                        ),
                       ),
                     ),
                   ),
@@ -423,33 +425,30 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
               )
             else
               ..._conditions.asMap().entries.map(
-                    (e) => Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 4),
-                      child: _ConditionRow(
-                        item: e.value,
-                        onTypeChange: (t) => setState(() => e.value.type = t),
-                        onValueChange: (v) => e.value.value = v,
-                        onDelete: () =>
-                            setState(() => _conditions.removeAt(e.key)),
-                      ),
-                    ),
+                (e) => Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
                   ),
+                  child: _ConditionRow(
+                    item: e.value,
+                    onTypeChange: (t) => setState(() => e.value.type = t),
+                    onValueChange: (v) => e.value.value = v,
+                    onDelete: () => setState(() => _conditions.removeAt(e.key)),
+                  ),
+                ),
+              ),
             const SizedBox(height: 8),
-            const _SectionHeader(title: 'Codigo QR'),
+            const _SectionHeader(title: 'Código QR'),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _QrSection(
-                qrCode: _qrCode,
-                onRefresh: () => setState(() => _qrCode = _generateQrCode()),
-              ),
+              child: const _QrGenerationNotice(),
             ),
             const SizedBox(height: 24),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: BlocBuilder<PromotionsBloc, PromotionsState>(
-                buildWhen: (a, b) =>
-                    a.actionInProgress != b.actionInProgress,
+                buildWhen: (a, b) => a.actionInProgress != b.actionInProgress,
                 builder: (context, state) {
                   return Row(
                     children: [
@@ -461,7 +460,9 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                           style: OutlinedButton.styleFrom(
                             minimumSize: const Size(0, 52),
                             side: const BorderSide(
-                                color: PromoColors.purple, width: 1.5),
+                              color: PromoColors.purple,
+                              width: 1.5,
+                            ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(50),
                             ),
@@ -608,9 +609,9 @@ class _PromoField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     OutlineInputBorder border(Color color) => OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: color),
-        );
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: color),
+    );
 
     return TextField(
       controller: controller,
@@ -628,10 +629,12 @@ class _PromoField extends StatelessWidget {
         fillColor: PromoColors.fieldBg,
         suffixIcon: suffixIcon,
         border: border(Colors.transparent),
-        enabledBorder:
-            border(isError ? PromoColors.errorRed : Colors.transparent),
-        focusedBorder:
-            border(isError ? PromoColors.errorRed : PromoColors.purple),
+        enabledBorder: border(
+          isError ? PromoColors.errorRed : Colors.transparent,
+        ),
+        focusedBorder: border(
+          isError ? PromoColors.errorRed : PromoColors.purple,
+        ),
       ),
     );
   }
@@ -655,8 +658,10 @@ class _CategoryDropdown extends StatelessWidget {
         child: DropdownButton<_PromotionCategory>(
           value: value,
           isExpanded: true,
-          icon: const Icon(Icons.keyboard_arrow_down,
-              color: PromoColors.textGray),
+          icon: const Icon(
+            Icons.keyboard_arrow_down,
+            color: PromoColors.textGray,
+          ),
           style: const TextStyle(color: PromoColors.textDark, fontSize: 14),
           onChanged: (c) {
             if (c != null) onChanged(c);
@@ -718,8 +723,10 @@ class _PromotionImageSelector extends StatelessWidget {
                           ),
                   ),
                   Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
                     child: Row(
                       children: [
                         Expanded(
@@ -960,16 +967,24 @@ class _ConditionRow extends StatelessWidget {
                       child: DropdownButton<_ConditionType>(
                         value: item.type,
                         isExpanded: true,
-                        hint: const Text('Elige una opcion',
-                            style: TextStyle(fontSize: 13)),
+                        hint: const Text(
+                          'Elige una opcion',
+                          style: TextStyle(fontSize: 13),
+                        ),
                         style: const TextStyle(
-                            color: PromoColors.textDark, fontSize: 13),
+                          color: PromoColors.textDark,
+                          fontSize: 13,
+                        ),
                         onChanged: (t) {
                           if (t != null) onTypeChange(t);
                         },
                         items: _ConditionType.values
-                            .map((t) => DropdownMenuItem(
-                                value: t, child: Text(t.label)))
+                            .map(
+                              (t) => DropdownMenuItem(
+                                value: t,
+                                child: Text(t.label),
+                              ),
+                            )
                             .toList(),
                       ),
                     ),
@@ -977,8 +992,11 @@ class _ConditionRow extends StatelessWidget {
                 ),
                 IconButton(
                   onPressed: onDelete,
-                  icon: const Icon(Icons.delete,
-                      color: PromoColors.errorRed, size: 22),
+                  icon: const Icon(
+                    Icons.delete,
+                    color: PromoColors.errorRed,
+                    size: 22,
+                  ),
                   tooltip: 'Eliminar condición',
                 ),
               ],
@@ -990,8 +1008,10 @@ class _ConditionRow extends StatelessWidget {
               style: const TextStyle(fontSize: 13),
               decoration: InputDecoration(
                 hintText: 'Valor...',
-                hintStyle:
-                    const TextStyle(fontSize: 12, color: PromoColors.textGray),
+                hintStyle: const TextStyle(
+                  fontSize: 12,
+                  color: PromoColors.textGray,
+                ),
                 filled: true,
                 fillColor: const Color(0xFFF5F5F5),
                 border: OutlineInputBorder(
@@ -1015,11 +1035,8 @@ class _ConditionRow extends StatelessWidget {
   }
 }
 
-class _QrSection extends StatelessWidget {
-  const _QrSection({required this.qrCode, required this.onRefresh});
-
-  final String qrCode;
-  final VoidCallback onRefresh;
+class _QrGenerationNotice extends StatelessWidget {
+  const _QrGenerationNotice();
 
   @override
   Widget build(BuildContext context) {
@@ -1029,45 +1046,33 @@ class _QrSection extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
       ),
       padding: const EdgeInsets.all(20),
-      child: Stack(
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Column(
-            children: [
-              Material(
-                elevation: 2,
-                borderRadius: BorderRadius.circular(16),
-                color: Colors.white,
-                child: const Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Icon(Icons.qr_code_2, color: Colors.black, size: 160),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                qrCode,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: Colors.black,
-                ),
-              ),
-            ],
-          ),
-          Align(
-            alignment: Alignment.topRight,
-            child: Container(
-              decoration: const BoxDecoration(
-                  color: Colors.white, shape: BoxShape.circle),
-              child: IconButton(
-                onPressed: onRefresh,
-                iconSize: 16,
-                constraints:
-                    const BoxConstraints.tightFor(width: 32, height: 32),
-                padding: EdgeInsets.zero,
-                icon: const Icon(Icons.refresh, color: PromoColors.textGray),
-                tooltip: 'Regenerar QR',
-              ),
+          Material(
+            elevation: 2,
+            borderRadius: BorderRadius.all(Radius.circular(16)),
+            color: Colors.white,
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Icon(Icons.qr_code_2, color: PromoColors.purple, size: 96),
             ),
+          ),
+          SizedBox(height: 12),
+          Text(
+            'El QR se genera cuando un consumidor canjea esta promoción',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              color: PromoColors.textDark,
+            ),
+          ),
+          SizedBox(height: 6),
+          Text(
+            'Este formulario solo publica la promoción. El código canjeable se crea desde Klippr Consumer mediante POST /api/redemptions.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12, color: PromoColors.textGray),
           ),
         ],
       ),
