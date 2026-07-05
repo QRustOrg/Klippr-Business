@@ -22,8 +22,8 @@ class ApiConfig {
   static const Map<Environment, String> _baseUrls = {
     // Loopback del emulador Android hacia la máquina host.
     Environment.dev: 'http://10.0.2.2:5000',
-    Environment.staging: 'https://klippr-backend-staging.up.railway.app',
-    Environment.prod: 'https://klippr-backend-production.up.railway.app',
+    Environment.staging: 'https://klippr-backend.onrender.com',
+    Environment.prod: 'https://klippr-backend.onrender.com',
   };
 
   /// Host base (esquema + autoridad) para el entorno activo.
