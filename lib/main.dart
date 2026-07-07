@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 
+import 'klippr/admin/application/bloc/admin_bloc.dart';
 import 'klippr/iam/application/bloc/auth_bloc.dart';
 import 'klippr/iam/presentation/views/splash_session_screen.dart';
 import 'klippr/profile/application/bloc/profile_bloc.dart';
@@ -37,6 +38,7 @@ class KlipprBusinessApp extends StatelessWidget {
         BlocProvider<PromotionsBloc>(create: (_) => sl<PromotionsBloc>()),
         BlocProvider<RedemptionBloc>(create: (_) => sl<RedemptionBloc>()),
         BlocProvider<ProfileBloc>(create: (_) => sl<ProfileBloc>()),
+        BlocProvider<AdminBloc>(create: (_) => sl<AdminBloc>()),
       ],
       child: MaterialApp(
         title: 'Klippr Business',

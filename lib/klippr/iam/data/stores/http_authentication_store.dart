@@ -57,7 +57,9 @@ class HttpAuthenticationStore implements AuthenticationStore {
       ),
     );
     return res.when(
-      onSuccess: (_) => signIn(email, password), // auto-login
+      onSuccess: (json) async => _persistAndReturn(
+        AuthenticatedUserDto.fromJson(_asMap(json)).toDomain(),
+      ),
       onFailure: (e) async => Failure<AuthenticatedUser>(e),
     );
   }

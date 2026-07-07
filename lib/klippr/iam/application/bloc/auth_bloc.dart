@@ -62,9 +62,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       businessName: e.businessName,
       taxId: e.taxId,
     );
-    await res.when(
-      onSuccess: (user) => _onAuthSuccess(user, emit),
-      onFailure: (err) async =>
+    res.when(
+      onSuccess: (user) async => await _onAuthSuccess(user, emit),
+      onFailure: (err) =>
           emit(state.copyWith(isLoading: false, error: err.message)),
     );
   }
@@ -140,7 +140,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   void _onConsumeFlags(ResetFlagsConsumed e, Emitter<AuthState> emit) {
     // Conserva forgotEmail; limpia el resto de flags del flujo.
     emit(
-      state.copyWith(emailVerified: false, resetSuccess: false, error: null),
+      state.copyWith(
+        emailVerified: false,
+        resetSuccess: false,
+        signUpSuccess: false,
+        error: null,
+      ),
     );
   }
 

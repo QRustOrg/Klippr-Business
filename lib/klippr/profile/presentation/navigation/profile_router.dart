@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../application/bloc/profile_bloc.dart';
+import '../views/create_profile_screen.dart';
 import '../views/edit_profile_screen.dart';
 import '../views/profile_screen.dart';
 
@@ -20,6 +21,15 @@ abstract final class ProfileRouter {
       builder: (_) => BlocProvider<ProfileBloc>.value(
         value: bloc,
         child: const EditProfileScreen(),
+      ),
+    );
+  }
+
+  static Route<void> create(ProfileBloc bloc) {
+    return MaterialPageRoute(
+      builder: (_) => BlocProvider<ProfileBloc>.value(
+        value: bloc,
+        child: const CreateProfileScreen(),
       ),
     );
   }

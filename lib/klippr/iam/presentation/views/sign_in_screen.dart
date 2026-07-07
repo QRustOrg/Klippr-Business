@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../profile/application/bloc/profile_bloc.dart';
+import '../../../profile/presentation/navigation/profile_router.dart';
 import '../../../shared/data/pref/prefs_helper.dart';
 import '../../../shared/presentation/widgets/klippr_field.dart';
-import '../../../promotions/presentation/navigation/promotions_router.dart';
 import '../../application/bloc/auth_bloc.dart';
 import '../../application/bloc/auth_event.dart';
 import '../../application/bloc/auth_state.dart';
@@ -87,8 +88,9 @@ class _SignInScreenState extends State<SignInScreen> {
           if (state.isAuthenticated) {
             await _syncRememberedUser();
             if (!context.mounted) return;
+            final profileBloc = context.read<ProfileBloc>();
             Navigator.of(context).pushReplacement(
-              PromotionsRouter.home(),
+              ProfileRouter.create(profileBloc),
             );
           } else if (state.customerBlocked) {
             context.read<AuthBloc>().add(const CustomerBlockConsumed());

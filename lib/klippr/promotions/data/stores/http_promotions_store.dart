@@ -24,7 +24,7 @@ class HttpPromotionsStore implements PromotionsStore {
   final PromotionsWebService _service;
   final PrefsHelper _prefs;
 
-  String? get _businessId => _prefs.userId;
+  String? get _businessId => _prefs.profileId ?? _prefs.userId;
 
   @override
   Future<Result<List<Promotion>>> loadMine() async {

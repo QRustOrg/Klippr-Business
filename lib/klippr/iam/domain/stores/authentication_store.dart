@@ -4,7 +4,6 @@
 
 import '../../../shared/data/network/result.dart';
 import '../models/authenticated_user.dart';
-import '../models/business_user.dart';
 
 // author: Samuel Bonifacio
 //
@@ -18,8 +17,8 @@ abstract interface class AuthenticationStore {
   /// Inicia sesión con email/password y persiste el token en éxito.
   Future<Result<AuthenticatedUser>> signIn(String email, String password);
 
-  /// Registra un negocio. Si el backend no devuelve token, hace un sign-in
-  /// automático para establecer la sesión.
+  /// Registra un negocio y persiste el token. El backend devuelve
+  /// AuthenticatedUser con token, userId, email y role.
   Future<Result<AuthenticatedUser>> signUpBusiness({
     required String email,
     required String password,

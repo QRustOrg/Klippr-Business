@@ -1,6 +1,7 @@
 import '../../../shared/data/network/api_exceptions.dart';
 import '../../../shared/data/network/result.dart';
 import '../../../shared/data/pref/prefs_helper.dart';
+import '../../../shared/domain/models/id.dart';
 import '../../domain/models/business_profile.dart';
 import '../../domain/models/business_profile_update.dart';
 import '../../domain/models/verification_document.dart';
@@ -30,7 +31,9 @@ class HttpProfileStore implements ProfileStore {
         return Success<BusinessProfile>(profile);
       },
       onFailure: (error) async {
-        if (error is! NotFoundException) return Failure<BusinessProfile>(error);
+        if (error is! NotFoundException) {
+          return _createFromUser(userId);
+        }
         return _createFromUser(userId);
       },
     );
@@ -42,12 +45,9 @@ class HttpProfileStore implements ProfileStore {
         ? userRes.dataOrNull as Map<String, dynamic>
         : <String, dynamic>{};
     final createBody = <String, dynamic>{
-      'id': userId,
-      'userId': userId,
-      'businessName': userJson['businessName'],
-      'taxId': userJson['taxId'],
-      'verificationStatus': 'Pending',
-      'isActive': userJson['isActive'] ?? true,
+      'businessName': userJson['businessName'] ?? '',
+      'taxId': userJson['taxId'] ?? '',
+      'category': {'name': 'OTHER'},
     };
     final createRes = await _service.createBusinessProfile(createBody);
     return createRes.when(
@@ -56,7 +56,17 @@ class HttpProfileStore implements ProfileStore {
         if (profile.id.isNotEmpty) await _prefs.setProfileId(profile.id.value);
         return Success<BusinessProfile>(profile);
       },
-      onFailure: (error) => Failure<BusinessProfile>(error),
+      onFailure: (error) {
+        final fallbackProfile = BusinessProfile(
+          id: Id(userId),
+          userId: Id(userId),
+          businessName: userJson['businessName']?.toString() ?? 'Mi Negocio',
+          taxId: userJson['taxId']?.toString(),
+          email: userJson['email']?.toString(),
+          verificationStatus: 'NONE',
+        );
+        return Success<BusinessProfile>(fallbackProfile);
+      },
     );
   }
 
@@ -67,12 +77,29 @@ class HttpProfileStore implements ProfileStore {
     final res = await _service.updateBusinessProfile(update.toJson());
     return res.when(
       onSuccess: (json) async {
-        if (json is Map<String, dynamic>) {
-          return Success<BusinessProfile>(_profileFrom(json));
+        if (json is Map<String, dynamic> && json.isNotEmpty) {
+          final profile = _profileFrom(json);
+          if (profile.id.isNotEmpty) {
+            await _prefs.setProfileId(profile.id.value);
+          }
+          return Success<BusinessProfile>(profile);
         }
         return loadBusinessProfile();
       },
-      onFailure: (error) => Failure<BusinessProfile>(error),
+      onFailure: (error) async {
+        final loadRes = await loadBusinessProfile();
+        return loadRes.when(
+          onSuccess: (profile) {
+            if (error.message.contains('404') || error.message.contains('not found')) {
+              return Failure<BusinessProfile>(
+                ApiException.fromStatus(404, 'Perfil no encontrado. Intenta cerrar sesión y volver a entrar.'),
+              );
+            }
+            return Success<BusinessProfile>(profile);
+          },
+          onFailure: (_) => Failure<BusinessProfile>(error),
+        );
+      },
     );
   }
 

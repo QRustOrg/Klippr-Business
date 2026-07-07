@@ -1,5 +1,6 @@
 import 'package:get_it/get_it.dart';
 
+import 'klippr/admin/admin_dependencies.dart';
 import 'klippr/analytics/analytics_dependencies.dart';
 import 'klippr/iam/iam_dependencies.dart';
 import 'klippr/profile/profile_dependencies.dart';
@@ -34,5 +35,6 @@ abstract final class ServiceLocator {
     RedemptionDependencies.register(sl);
     AnalyticsDependencies.register(sl);
     ProfileDependencies.register(sl);
+    registerAdminDependencies(sl);
   }
 }

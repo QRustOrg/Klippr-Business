@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../admin/application/bloc/admin_bloc.dart';
+import '../../../admin/presentation/views/admin_dashboard_screen.dart';
 import '../../../analytics/domain/models/business_dashboard_metrics.dart';
 import '../../../analytics/domain/stores/analytics_store.dart';
 import '../../../iam/application/bloc/auth_bloc.dart';
@@ -68,6 +70,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
     Navigator.of(context).pushAndRemoveUntil(IamRouter.signIn(), (_) => false);
   }
 
+  void _openAdminPanel() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BlocProvider.value(
+          value: context.read<AdminBloc>(),
+          child: const AdminDashboardScreen(),
+        ),
+      ),
+    );
+  }
+
+  bool _isAdmin() {
+    final authState = context.read<AuthBloc>().state;
+    return authState.user?.role.toUpperCase() == 'ADMIN';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -118,6 +136,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             onEdit: _edit,
                             onSubmitVerification: _submitVerification,
                             onLogout: _logout,
+                            onOpenAdminPanel: _openAdminPanel,
+                            isAdmin: _isAdmin(),
                           ),
                   ),
                 ),
@@ -200,6 +220,8 @@ class _ProfileContent extends StatelessWidget {
     required this.onEdit,
     required this.onSubmitVerification,
     required this.onLogout,
+    required this.onOpenAdminPanel,
+    required this.isAdmin,
   });
 
   final BusinessProfile profile;
@@ -207,6 +229,8 @@ class _ProfileContent extends StatelessWidget {
   final VoidCallback onEdit;
   final void Function(BusinessProfile profile) onSubmitVerification;
   final VoidCallback onLogout;
+  final VoidCallback onOpenAdminPanel;
+  final bool isAdmin;
 
   @override
   Widget build(BuildContext context) {
@@ -245,6 +269,29 @@ class _ProfileContent extends StatelessWidget {
           onEdit: onEdit,
           onSubmitVerification: () => onSubmitVerification(profile),
         ),
+        if (isAdmin) ...[
+          const SizedBox(height: 18),
+          SizedBox(
+            height: 52,
+            child: ElevatedButton.icon(
+              onPressed: onOpenAdminPanel,
+              icon: const Icon(Icons.admin_panel_settings, color: Colors.white),
+              label: const Text(
+                'Panel de Administrador',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: PromoColors.purple,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: 18),
         SizedBox(
           height: 52,

@@ -17,6 +17,7 @@ class AuthState {
     this.emailVerified = false,
     this.resetSuccess = false,
     this.customerBlocked = false,
+    this.signUpSuccess = false,
   });
 
   final bool isLoading;
@@ -31,6 +32,9 @@ class AuthState {
   /// True cuando un rol CONSUMER intentó entrar → gatilla el modal de bloqueo.
   final bool customerBlocked;
 
+  /// True cuando el sign up fue exitoso → gatilla navegación a SignIn.
+  final bool signUpSuccess;
+
   bool get isAuthenticated => user != null;
 
   AuthState copyWith({
@@ -41,6 +45,7 @@ class AuthState {
     bool? emailVerified,
     bool? resetSuccess,
     bool? customerBlocked,
+    bool? signUpSuccess,
   }) {
     return AuthState(
       isLoading: isLoading ?? this.isLoading,
@@ -51,6 +56,7 @@ class AuthState {
       emailVerified: emailVerified ?? this.emailVerified,
       resetSuccess: resetSuccess ?? this.resetSuccess,
       customerBlocked: customerBlocked ?? this.customerBlocked,
+      signUpSuccess: signUpSuccess ?? this.signUpSuccess,
     );
   }
 }

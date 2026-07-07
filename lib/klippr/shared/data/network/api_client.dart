@@ -83,11 +83,15 @@ class ApiClient {
           .timeout(ApiConfig.timeout);
       return _handleResponse(response);
     } on TimeoutException {
-      return const Failure(TimeoutApiException());
-    } on SocketException {
-      return const Failure(NetworkException());
-    } on http.ClientException {
-      return const Failure(NetworkException());
+      return Failure(TimeoutApiException('La solicitud tardó demasiado. Verifica tu conexión.'));
+    } on SocketException catch (e) {
+      return Failure(NetworkException('Error de red: ${e.message}'));
+    } on HttpException catch (e) {
+      return Failure(NetworkException('Error HTTP: ${e.message}'));
+    } on http.ClientException catch (e) {
+      return Failure(NetworkException('Error del cliente: ${e.message}'));
+    } catch (e) {
+      return Failure(NetworkException('Error inesperado: $e'));
     }
   }
 

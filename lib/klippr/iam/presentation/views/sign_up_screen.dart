@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../profile/application/bloc/profile_bloc.dart';
+import '../../../profile/presentation/navigation/profile_router.dart';
 import '../../../shared/presentation/widgets/klippr_field.dart';
-import '../../../promotions/presentation/navigation/promotions_router.dart';
 import '../../application/bloc/auth_bloc.dart';
 import '../../application/bloc/auth_event.dart';
 import '../../application/bloc/auth_state.dart';
@@ -12,7 +13,8 @@ import 'auth_colors.dart';
 //
 // Pantalla de registro. Port de SignUpScreen.kt adaptado al perfil Business:
 // los campos son Business Name + Tax ID + Email + Password (el backend espera
-// businessName y taxId). Tras un alta exitosa, el repositorio hace auto sign-in.
+// businessName y taxId). Tras un alta exitosa, navega al SignInScreen para que
+// el usuario inicie sesión manualmente con sus credenciales.
 
 /// Pantalla de registro de negocio.
 class SignUpScreen extends StatefulWidget {
@@ -42,10 +44,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
     return Scaffold(
       backgroundColor: AuthColors.screenBg,
       body: BlocConsumer<AuthBloc, AuthState>(
-        listener: (context, state) {
+        listener: (context, state) async {
           if (state.isAuthenticated) {
+            if (!context.mounted) return;
+            final profileBloc = context.read<ProfileBloc>();
             Navigator.of(context).pushReplacement(
-              PromotionsRouter.home(),
+              ProfileRouter.create(profileBloc),
             );
           }
         },

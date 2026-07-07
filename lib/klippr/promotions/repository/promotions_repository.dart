@@ -17,7 +17,7 @@ class PromotionsRepository {
   final PromotionsService _service;
   final PrefsHelper _prefs;
 
-  String? get businessId => _prefs.userId;
+  String? get businessId => _prefs.profileId ?? _prefs.userId;
 
   Future<Result<List<Promotion>>> loadMine() async {
     final id = businessId;
