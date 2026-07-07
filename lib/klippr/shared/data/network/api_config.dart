@@ -24,8 +24,8 @@ class ApiConfig {
     Environment.dev: 'http://10.0.2.2:8080',
     // Para dispositivo físico, usar la IP de la Mac:
     // Environment.dev: 'http://192.168.x.x:8080',
-    Environment.staging: 'https://klippr-backend.onrender.com',
-    Environment.prod: 'https://klippr-backend.onrender.com',
+    Environment.staging: 'https://klippr-backend-8o4x.onrender.com',
+    Environment.prod: 'https://klippr-backend-8o4x.onrender.com',
   };
 
   /// Host base (esquema + autoridad) para el entorno activo.
