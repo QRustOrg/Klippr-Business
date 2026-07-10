@@ -67,11 +67,11 @@ class HttpPromotionsStore implements PromotionsStore {
     var anySuccess = false;
 
     for (final id in ids) {
-      final res = await _service.getByBusiness(id);
+      final res = await loadByBusiness(id);
       res.when(
-        onSuccess: (json) {
+        onSuccess: (promotions) {
           anySuccess = true;
-          for (final promo in _toPromotionList(json)) {
+          for (final promo in promotions) {
             byId[promo.id.value] = promo;
           }
         },
@@ -85,6 +85,21 @@ class HttpPromotionsStore implements PromotionsStore {
       );
     }
     return Success<List<Promotion>>(byId.values.toList(growable: false));
+  }
+
+  @override
+  Future<Result<List<Promotion>>> loadByBusiness(String businessId) async {
+    final id = businessId.trim();
+    if (id.isEmpty) {
+      return const Failure(
+        ValidationException('businessId es requerido.'),
+      );
+    }
+    final res = await _service.getByBusiness(id);
+    return res.when(
+      onSuccess: (json) => Success<List<Promotion>>(_toPromotionList(json)),
+      onFailure: (e) => Failure<List<Promotion>>(e),
+    );
   }
 
   @override

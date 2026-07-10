@@ -41,7 +41,14 @@ class _FakePromotionsStore implements PromotionsStore {
   Future<Result<List<Promotion>>> loadMine() async => const Success([]);
 
   @override
+  Future<Result<List<Promotion>>> loadByBusiness(String businessId) async =>
+      const Success([]);
+
+  @override
   Future<Result<List<Promotion>>> loadActiveMine() async => const Success([]);
+
+  @override
+  Future<Result<List<Promotion>>> loadActive() async => const Success([]);
 
   @override
   Future<Result<Promotion>> getById(String id) async =>

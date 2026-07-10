@@ -42,6 +42,7 @@ void main() {
       find.text('Tus promos tienen 17 canjes hasta la fecha'),
       findsOneWidget,
     );
+    expect(find.text('Rendimiento y reseñas'), findsOneWidget);
   });
 
   testWidgets('unverified business cannot send publish request', (
@@ -114,7 +115,14 @@ class _FakePromotionsStore implements PromotionsStore {
   Future<Result<List<Promotion>>> loadMine() async => Success(promotions);
 
   @override
+  Future<Result<List<Promotion>>> loadByBusiness(String businessId) async =>
+      Success(promotions);
+
+  @override
   Future<Result<List<Promotion>>> loadActiveMine() async => Success(promotions);
+
+  @override
+  Future<Result<List<Promotion>>> loadActive() async => Success(promotions);
 
   @override
   Future<Result<Promotion>> getById(String id) async =>

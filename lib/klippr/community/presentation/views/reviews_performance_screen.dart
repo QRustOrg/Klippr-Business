@@ -4,6 +4,7 @@ import 'package:get_it/get_it.dart';
 import '../../../analytics/domain/stores/analytics_store.dart';
 import '../../../promotions/domain/models/promotion.dart';
 import '../../../promotions/domain/stores/promotions_store.dart';
+import '../../../promotions/presentation/resources/promotion_image_catalog.dart';
 import '../../../promotions/presentation/views/promo_colors.dart';
 import '../../domain/models/promotion_feedback_metrics.dart';
 import '../../domain/models/review.dart';
@@ -54,7 +55,12 @@ class _ReviewsPerformanceScreenState extends State<ReviewsPerformanceScreen> {
 
   Future<void> _load() async {
     if (mounted) setState(() => _loading = true);
-    final ownFuture = _promotions.loadMine();
+
+    // Mis promociones: GET /api/promotions/businesses/{businessId}
+    final businessId = widget.profileId.trim();
+    final ownFuture = businessId.isNotEmpty
+        ? _promotions.loadByBusiness(businessId)
+        : _promotions.loadMine();
     final activeFuture = _promotions.loadActive();
     final reviewsFuture = _reviews.getReviews();
     final ownResult = await ownFuture;
@@ -96,12 +102,12 @@ class _ReviewsPerformanceScreenState extends State<ReviewsPerformanceScreen> {
       }),
     );
     Map<String, int>? ownRedemptions;
-    final businessId = widget.profileId.isNotEmpty
-        ? widget.profileId
+    final redemptionsBusinessId = businessId.isNotEmpty
+        ? businessId
         : own.firstOrNull?.businessId.value;
-    if (businessId != null && businessId.isNotEmpty) {
+    if (redemptionsBusinessId != null && redemptionsBusinessId.isNotEmpty) {
       ownRedemptions = (await _analytics.loadPromotionRedemptionCounts(
-        businessId,
+        redemptionsBusinessId,
       )).dataOrNull;
     }
 
@@ -266,52 +272,304 @@ class _PromotionReviewsList extends StatelessWidget {
               itemBuilder: (context, index) {
                 final promotion = promotions[index];
                 final value = metrics(promotion, isOwn);
-                return Card(
+                return _PromotionReviewCard(
                   key: Key('promotion-card-${promotion.id.value}'),
-                  clipBehavior: Clip.antiAlias,
-                  child: InkWell(
-                    onTap: () => onOpen(promotion, isOwn),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            promotion.title,
-                            style: Theme.of(context).textTheme.titleLarge
-                                ?.copyWith(fontWeight: FontWeight.w800),
-                          ),
-                          if (!isOwn && promotion.businessName.isNotEmpty)
-                            Text(promotion.businessName),
-                          const SizedBox(height: 12),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              _Metric('${value.redemptions ?? '--'} canjes'),
-                              _Metric(
-                                value.averageRating == null
-                                    ? '-- promedio'
-                                    : '${value.averageRating!.toStringAsFixed(1)} promedio',
-                              ),
-                              _Metric(
-                                '${value.reviewCount} ${value.reviewCount == 1 ? 'reseña' : 'reseñas'}',
-                              ),
-                              _Metric('${value.likeCount} likes'),
-                              _Metric(
-                                value.replyCount == null
-                                    ? '-- respuestas'
-                                    : '${value.replyCount} ${value.replyCount == 1 ? 'respuesta' : 'respuestas'}',
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                  promotion: promotion,
+                  metrics: value,
+                  showBusiness: !isOwn,
+                  onTap: () => onOpen(promotion, isOwn),
                 );
               },
             ),
+    );
+  }
+}
+
+/// Card completa de promoción para la lista de rendimiento/reseñas.
+/// Usa los campos del GET (título, negocio, imagen, estado, descuento, fechas).
+class _PromotionReviewCard extends StatelessWidget {
+  const _PromotionReviewCard({
+    super.key,
+    required this.promotion,
+    required this.metrics,
+    required this.showBusiness,
+    required this.onTap,
+  });
+
+  final Promotion promotion;
+  final PromotionFeedbackMetrics metrics;
+  final bool showBusiness;
+  final VoidCallback onTap;
+
+  bool get _isExpired => promotion.isExpired;
+
+  String get _statusLabel => switch (promotion.status) {
+    _ when _isExpired => PromotionStatus.expired.label,
+    PromotionStatus.published =>
+      promotion.isActive ? 'Activa' : promotion.status.label,
+    _ => promotion.status.label,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final image = PromotionImageCatalog.byKey(promotion.imageKey);
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        promotion.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: PromoColors.textDark,
+                          height: 1.15,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    _StatusPill(
+                      label: _statusLabel,
+                      status: promotion.status,
+                      isActive: promotion.isActive,
+                      isExpired: _isExpired,
+                    ),
+                  ],
+                ),
+                if (showBusiness && promotion.businessName.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.storefront_outlined,
+                        size: 16,
+                        color: PromoColors.textGray,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          promotion.businessName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: PromoColors.textGray,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: AspectRatio(
+                    aspectRatio: 16 / 9,
+                    child: Image.asset(
+                      image.assetPath,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          const DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: PromoColors.fieldBg,
+                            ),
+                            child: Center(
+                              child: Icon(
+                                Icons.image_outlined,
+                                color: PromoColors.purple,
+                                size: 42,
+                              ),
+                            ),
+                          ),
+                    ),
+                  ),
+                ),
+                if (promotion.description.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    promotion.description,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      height: 1.3,
+                      color: PromoColors.textDark,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _MetaChip(
+                      label: promotion.discountLabel,
+                      background: const Color(0xFFFBF7C5),
+                      foreground: const Color(0xFF9A9350),
+                    ),
+                    _MetaChip(
+                      label: _dateRangeLabel(
+                        promotion.startDate,
+                        promotion.endDate,
+                      ),
+                      background: PromoColors.statBlueBg,
+                      foreground: const Color(0xFF587A9C),
+                    ),
+                    _MetaChip(
+                      label: _redemptionCapLabel(promotion.redemptionCap),
+                      background: const Color(0xFFF5C5F4),
+                      foreground: const Color(0xFFA855B4),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                const Divider(
+                  color: Color(0xFFEDE5F1),
+                  height: 1,
+                  thickness: 1.5,
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _Metric('${metrics.redemptions ?? '--'} canjes'),
+                    _Metric(
+                      metrics.averageRating == null
+                          ? '-- promedio'
+                          : '${metrics.averageRating!.toStringAsFixed(1)} promedio',
+                    ),
+                    _Metric(
+                      '${metrics.reviewCount} ${metrics.reviewCount == 1 ? 'reseña' : 'reseñas'}',
+                    ),
+                    _Metric('${metrics.likeCount} likes'),
+                    _Metric(
+                      metrics.replyCount == null
+                          ? '-- respuestas'
+                          : '${metrics.replyCount} ${metrics.replyCount == 1 ? 'respuesta' : 'respuestas'}',
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({
+    required this.label,
+    required this.status,
+    required this.isActive,
+    required this.isExpired,
+  });
+
+  final String label;
+  final PromotionStatus status;
+  final bool isActive;
+  final bool isExpired;
+
+  Color get _background => switch (status) {
+    _ when isExpired => PromoColors.statAmberBg,
+    PromotionStatus.published when isActive => PromoColors.statGreenBg,
+    PromotionStatus.published => PromoColors.statBlueBg,
+    PromotionStatus.draft => PromoColors.statPurpleBg,
+    PromotionStatus.cancelled => const Color(0xFFFFD6D2),
+    PromotionStatus.expired => PromoColors.statAmberBg,
+    PromotionStatus.unknown => const Color(0xFFEAEAEA),
+  };
+
+  Color get _foreground => switch (status) {
+    _ when isExpired => const Color(0xFFC97900),
+    PromotionStatus.published when isActive => const Color(0xFF009B55),
+    PromotionStatus.published => PromoColors.statBlueIcon,
+    PromotionStatus.draft => PromoColors.purpleText,
+    PromotionStatus.cancelled => PromoColors.errorRed,
+    PromotionStatus.expired => const Color(0xFFC97900),
+    PromotionStatus.unknown => PromoColors.textGray,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: _background,
+        borderRadius: BorderRadius.circular(50),
+      ),
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          color: _foreground,
+          fontSize: 13,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+}
+
+class _MetaChip extends StatelessWidget {
+  const _MetaChip({
+    required this.label,
+    required this.background,
+    required this.foreground,
+  });
+
+  final String label;
+  final Color background;
+  final Color foreground;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(50),
+      ),
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          color: foreground,
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
     );
   }
 }
@@ -329,6 +587,25 @@ class _Metric extends StatelessWidget {
     ),
     child: Text(label, style: const TextStyle(color: PromoColors.purpleText)),
   );
+}
+
+String _redemptionCapLabel(int? redemptionCap) {
+  if (redemptionCap == null || redemptionCap <= 0) return 'sin limite';
+  return '$redemptionCap unid.';
+}
+
+String _dateRangeLabel(DateTime? start, DateTime? end) {
+  if (start == null && end == null) return 'sin fecha';
+  if (start == null) return 'hasta ${_formatShortDate(end)}';
+  if (end == null) return 'desde ${_formatShortDate(start)}';
+  return '${_formatShortDate(start)} al ${_formatShortDate(end)}';
+}
+
+String _formatShortDate(DateTime? date) {
+  if (date == null) return '--/--';
+  final dd = date.day.toString().padLeft(2, '0');
+  final mm = date.month.toString().padLeft(2, '0');
+  return '$dd/$mm';
 }
 
 class _ReviewsDetailScreen extends StatefulWidget {

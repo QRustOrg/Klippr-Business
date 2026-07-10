@@ -16,6 +16,9 @@ abstract interface class PromotionsStore {
   /// Carga todas las promociones del negocio autenticado.
   Future<Result<List<Promotion>>> loadMine();
 
+  /// Lista promociones de un negocio: GET /api/promotions/businesses/{businessId}.
+  Future<Result<List<Promotion>>> loadByBusiness(String businessId);
+
   /// Carga solo las promociones activas del negocio autenticado.
   Future<Result<List<Promotion>>> loadActiveMine();
 
