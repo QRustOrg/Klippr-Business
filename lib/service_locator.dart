@@ -2,6 +2,7 @@ import 'package:get_it/get_it.dart';
 
 import 'klippr/admin/admin_dependencies.dart';
 import 'klippr/analytics/analytics_dependencies.dart';
+import 'klippr/community/repository/reviews_repository.dart';
 import 'klippr/iam/iam_dependencies.dart';
 import 'klippr/profile/profile_dependencies.dart';
 import 'klippr/promotions/promotions_dependencies.dart';
@@ -37,6 +38,7 @@ abstract final class ServiceLocator {
     PromotionsDependencies.register(sl);
     RedemptionDependencies.register(sl);
     AnalyticsDependencies.register(sl);
+    sl.registerLazySingleton<ReviewsRepository>(() => ReviewsRepository(sl()));
     registerAdminDependencies(sl);
   }
 }

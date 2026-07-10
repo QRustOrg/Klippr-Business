@@ -386,18 +386,29 @@ class _StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final verified = profile.isVerified;
+    final rejected =
+        profile.verificationStatus?.trim().toLowerCase() == 'rejected';
+    final label = verified ? 'BUSINESS' : profile.statusLabel;
+    final background = verified
+        ? PromoColors.statGreenBg
+        : rejected
+        ? const Color(0xFFFFD6D2)
+        : PromoColors.statAmberBg;
+    final foreground = verified
+        ? PromoColors.statGreenIcon
+        : rejected
+        ? PromoColors.errorRed
+        : PromoColors.statAmberIcon;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
       decoration: BoxDecoration(
-        color: verified ? PromoColors.statGreenBg : PromoColors.statAmberBg,
+        color: background,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
-        profile.statusLabel,
+        label,
         style: TextStyle(
-          color: verified
-              ? PromoColors.statGreenIcon
-              : PromoColors.statAmberIcon,
+          color: foreground,
           fontWeight: FontWeight.w800,
           fontSize: 12,
         ),

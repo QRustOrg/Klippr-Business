@@ -46,9 +46,7 @@ class ReviewsRepository {
     );
     return result.when(
       onSuccess: (json) => json is Map
-          ? Success(
-              ReviewComment.fromJson(Map<String, dynamic>.from(json)),
-            )
+          ? Success(ReviewComment.fromJson(Map<String, dynamic>.from(json)))
           : const Failure(ParseException()),
       onFailure: (error) => Failure<ReviewComment>(error),
     );

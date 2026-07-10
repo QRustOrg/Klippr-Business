@@ -21,7 +21,8 @@ class ReviewComment {
     userId: json['userId']?.toString() ?? '',
     userName: json['userName']?.toString() ?? '',
     comment: json['comment']?.toString() ?? '',
-    createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
+    createdAt:
+        DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
         DateTime.fromMillisecondsSinceEpoch(0),
   );
 }
