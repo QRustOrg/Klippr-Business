@@ -41,17 +41,38 @@ class BusinessProfile {
       businessName.trim().isEmpty ? 'Negocio Klippr' : businessName.trim();
 
   String get statusLabel {
-    final raw = (verificationStatus ?? '').trim();
-    if (raw.isEmpty) return 'Pendiente';
-    return switch (raw.toLowerCase()) {
-      'verified' || 'approved' || 'verificado' => 'Verificado',
-      'rejected' || 'rechazado' => 'Rechazado',
-      'pending' || 'pendiente' => 'Pendiente',
-      _ => raw,
+    final raw = (verificationStatus ?? '').trim().toLowerCase();
+    if (raw.isEmpty || raw == 'none' || raw == 'null') return 'Pendiente';
+    return switch (raw) {
+      'verified' ||
+      'approved' ||
+      'verificado' ||
+      'active' ||
+      'activo' =>
+        'Verificado',
+      'rejected' || 'rechazado' || 'denied' => 'Rechazado',
+      'pending' ||
+      'pendiente' ||
+      'submitted' ||
+      'in_review' ||
+      'inreview' ||
+      'under_review' =>
+        'Pendiente',
+      _ => verificationStatus?.trim().isNotEmpty == true
+          ? verificationStatus!.trim()
+          : 'Pendiente',
     };
   }
 
-  bool get isVerified => statusLabel.toLowerCase() == 'verificado';
+  bool get isVerified {
+    final raw = (verificationStatus ?? '').trim().toLowerCase();
+    return raw == 'verified' ||
+        raw == 'approved' ||
+        raw == 'verificado' ||
+        raw == 'active' ||
+        raw == 'activo' ||
+        statusLabel.toLowerCase() == 'verificado';
+  }
 
   BusinessProfile copyWith({
     Id? id,

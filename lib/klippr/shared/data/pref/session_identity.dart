@@ -11,20 +11,34 @@ import 'prefs_helper.dart';
 abstract final class SessionIdentity {
   /// Intenta rellenar [PrefsHelper.userId] desde el JWT si está vacío.
   ///
+  /// También restaura [PrefsHelper.profileId] mapeado a ese usuario para no
+  /// perder el negocio verificado al reabrir la app.
+  ///
   /// Devuelve el userId efectivo (prefs o recuperado), o null si no hay.
   static Future<String?> ensureUserId([PrefsHelper? prefs]) async {
     final p = prefs ?? PrefsHelper.instance;
-    final existing = p.userId;
-    if (existing != null && existing.isNotEmpty) return existing;
+    var userId = p.userId;
+    if (userId == null || userId.isEmpty) {
+      final token = p.token;
+      if (token == null || token.isEmpty) return null;
 
-    final token = p.token;
-    if (token == null || token.isEmpty) return null;
+      final recovered = userIdFromJwt(token);
+      if (recovered == null || recovered.isEmpty) return null;
 
-    final recovered = userIdFromJwt(token);
-    if (recovered == null || recovered.isEmpty) return null;
+      await p.setUserId(recovered);
+      userId = recovered;
+    }
 
-    await p.setUserId(recovered);
-    return recovered;
+    // Rehidrata profileId de sesión desde el mapeo estable por usuario.
+    final sessionProfile = p.profileId;
+    if (sessionProfile == null || sessionProfile.isEmpty) {
+      final known = p.profileIdForUser(userId);
+      if (known != null && known.isNotEmpty) {
+        await p.setProfileId(known);
+      }
+    }
+
+    return userId;
   }
 
   /// Extrae el userId del payload JWT sin validar firma (solo cliente).

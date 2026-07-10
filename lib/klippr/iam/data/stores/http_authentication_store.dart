@@ -101,6 +101,11 @@ class HttpAuthenticationStore implements AuthenticationStore {
     }
     if (user.id.isNotEmpty) {
       await _prefs.setUserId(user.id.value);
+      // Restaura el profileId del negocio de este usuario (si ya se conoció).
+      final knownProfile = _prefs.profileIdForUser(user.id.value);
+      if (knownProfile != null && knownProfile.isNotEmpty) {
+        await _prefs.setProfileId(knownProfile);
+      }
     }
     return Success<AuthenticatedUser>(user);
   }

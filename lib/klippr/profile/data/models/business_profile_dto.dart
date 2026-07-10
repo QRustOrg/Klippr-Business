@@ -50,14 +50,15 @@ class BusinessProfileDto {
       description: json['description']?.toString(),
       category: _category(json['category']),
       location: _location(json['location']),
-      verificationStatus: json['verificationStatus']?.toString(),
-      averageRating: rating is Map<String, dynamic>
-          ? (rating['averageRating'] as num?)?.toDouble() ?? 0
+      verificationStatus: _readVerificationStatus(json),
+      averageRating: rating is Map
+          ? ((rating as Map)['averageRating'] as num?)?.toDouble() ?? 0
           : 0,
-      totalReviews: rating is Map<String, dynamic>
-          ? (rating['totalReviews'] as num?)?.toInt() ?? 0
+      totalReviews: rating is Map
+          ? ((rating as Map)['totalReviews'] as num?)?.toInt() ?? 0
           : 0,
-      documentUrl: json['documentUrl']?.toString(),
+      documentUrl:
+          json['documentUrl']?.toString() ?? json['DocumentUrl']?.toString(),
       createdAt: json['createdAt']?.toString(),
       updatedAt: json['updatedAt']?.toString(),
       isActive: json['isActive'] as bool? ?? true,
@@ -91,6 +92,31 @@ class BusinessProfileDto {
           DateTime.tryParse(userJson?['updatedAt']?.toString() ?? ''),
       isActive: isActive,
     );
+  }
+
+  static String? _readVerificationStatus(Map<String, dynamic> json) {
+    for (final key in const [
+      'verificationStatus',
+      'VerificationStatus',
+      'verification_status',
+      'status',
+    ]) {
+      final raw = json[key];
+      if (raw == null) continue;
+      final text = raw.toString().trim();
+      if (text.isNotEmpty && text.toLowerCase() != 'null') return text;
+    }
+    // Algunos backends envían booleano isVerified / verified.
+    final verifiedFlag = json['isVerified'] ?? json['verified'];
+    if (verifiedFlag is bool) {
+      return verifiedFlag ? 'Verified' : 'Pending';
+    }
+    if (verifiedFlag != null) {
+      final text = verifiedFlag.toString().toLowerCase();
+      if (text == 'true' || text == '1') return 'Verified';
+      if (text == 'false' || text == '0') return 'Pending';
+    }
+    return null;
   }
 
   static BusinessCategory? _category(Object? json) {

@@ -144,15 +144,19 @@ void main() {
         'user_id': 'user-1',
       });
       final prefs = PrefsHelper.test(await SharedPreferences.getInstance());
-      var call = 0;
       final client = MockClient((request) async {
-        call += 1;
-        if (call == 1) {
-          expect(request.url.path, '/api/profiles/business/user-1');
+        final path = request.url.path;
+        if (path == '/api/profiles/business/user-1') {
           return http.Response('{"message":"missing"}', 404);
         }
-        if (call == 2) {
-          expect(request.url.path, '/api/Users/user-1');
+        if (path == '/api/promotions/businesses/user-1') {
+          return http.Response(
+            '[]',
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }
+        if (path == '/api/Users/user-1') {
           return http.Response(
             '{"userId":"user-1","email":"biz@test.com","role":"BUSINESS",'
             '"businessName":"Klippr Cafe","taxId":"20123456789",'
@@ -162,7 +166,15 @@ void main() {
             headers: {'content-type': 'application/json'},
           );
         }
-        expect(request.url.path, '/api/profiles/business');
+        if (path == '/api/promotions') {
+          return http.Response(
+            '[]',
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }
+        expect(path, '/api/profiles/business');
+        expect(request.method, 'POST');
         return http.Response(
           '{"id":"profile-9","userId":"user-1","businessName":"Klippr Cafe",'
           '"taxId":"20123456789","verificationStatus":"Pending",'
@@ -182,6 +194,106 @@ void main() {
       expect(result.dataOrNull?.id.value, 'profile-9');
       expect(result.dataOrNull?.email, 'biz@test.com');
       expect(prefs.profileId, 'profile-9');
+      expect(prefs.profileIdForUser('user-1'), 'profile-9');
+    },
+  );
+
+  test(
+    'profile store reuses mapped profile id and keeps verification status',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        'session_token': 'token',
+        'user_id': 'user-1',
+        'profile_id_user_user-1': 'profile-verified',
+      });
+      final prefs = PrefsHelper.test(await SharedPreferences.getInstance());
+      final seen = <String>[];
+      final client = MockClient((request) async {
+        seen.add(request.url.path);
+        if (request.url.path == '/api/profiles/business/profile-verified') {
+          return http.Response(
+            '{"id":"profile-verified","userId":"user-1",'
+            '"businessName":"Pizzeria Mario",'
+            '"verificationStatus":"Verified","isActive":true}',
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }
+        return http.Response('{"message":"unexpected"}', 500);
+      });
+      final store = HttpProfileStore(
+        ProfileWebService(ApiClient(client: client, prefs: prefs)),
+        prefs: prefs,
+      );
+
+      final result = await store.loadBusinessProfile();
+
+      expect(result.dataOrNull?.id.value, 'profile-verified');
+      expect(result.dataOrNull?.isVerified, isTrue);
+      expect(result.dataOrNull?.statusLabel, 'Verificado');
+      expect(prefs.profileId, 'profile-verified');
+      expect(seen, ['/api/profiles/business/profile-verified']);
+    },
+  );
+
+  test(
+    'profile store discovers existing profile from promotions before creating',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        'session_token': 'token',
+        'user_id': 'user-1',
+      });
+      final prefs = PrefsHelper.test(await SharedPreferences.getInstance());
+      final client = MockClient((request) async {
+        final path = request.url.path;
+        if (path == '/api/profiles/business/user-1') {
+          return http.Response('{"message":"missing"}', 404);
+        }
+        if (path == '/api/promotions/businesses/user-1') {
+          return http.Response(
+            '[]',
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }
+        if (path == '/api/Users/user-1') {
+          return http.Response(
+            '{"userId":"user-1","businessName":"Pizzeria Mario",'
+            '"role":"BUSINESS","isActive":true}',
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }
+        if (path == '/api/promotions') {
+          return http.Response(
+            '[{"id":"p1","businessId":"profile-mario",'
+            '"businessName":"Pizzeria Mario","title":"2x1"}]',
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }
+        if (path == '/api/profiles/business/profile-mario') {
+          return http.Response(
+            '{"id":"profile-mario","userId":"user-1",'
+            '"businessName":"Pizzeria Mario",'
+            '"verificationStatus":"Approved","isActive":true}',
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }
+        // Must not create a new profile.
+        return http.Response('{"message":"should not create"}', 500);
+      });
+      final store = HttpProfileStore(
+        ProfileWebService(ApiClient(client: client, prefs: prefs)),
+        prefs: prefs,
+      );
+
+      final result = await store.loadBusinessProfile();
+
+      expect(result.dataOrNull?.id.value, 'profile-mario');
+      expect(result.dataOrNull?.isVerified, isTrue);
+      expect(prefs.profileId, 'profile-mario');
     },
   );
 

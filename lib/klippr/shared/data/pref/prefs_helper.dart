@@ -65,11 +65,29 @@ class PrefsHelper {
 
   // --- Id de perfil Business ---------------------------------------------
 
-  /// Id del perfil Business asociado al usuario autenticado.
+  static const String _kProfileIdByUserPrefix = 'profile_id_user_';
+
+  /// Id del perfil Business de la sesión actual.
   String? get profileId => _store.getString(_kProfileId);
 
-  Future<void> setProfileId(String id) => _store.setString(_kProfileId, id);
+  /// Guarda el profileId de sesión y un mapeo estable por [userId].
+  /// Así, al re-login no se pierde el perfil verificado.
+  Future<void> setProfileId(String id) async {
+    await _store.setString(_kProfileId, id);
+    final uid = userId;
+    if (uid != null && uid.isNotEmpty) {
+      await _store.setString('$_kProfileIdByUserPrefix$uid', id);
+    }
+  }
 
+  /// ProfileId guardado para un usuario (sobrevive al sign-out de sesión).
+  String? profileIdForUser(String userId) {
+    final id = userId.trim();
+    if (id.isEmpty) return null;
+    return _store.getString('$_kProfileIdByUserPrefix$id');
+  }
+
+  /// Solo limpia el profileId de sesión; conserva el mapeo por usuario.
   Future<void> clearProfileId() => _store.remove(_kProfileId);
 
   // --- Usuario recordado ---------------------------------------------------
