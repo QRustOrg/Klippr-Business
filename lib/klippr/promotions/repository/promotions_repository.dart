@@ -12,37 +12,69 @@ import '../services/promotions_service.dart';
 
 class PromotionsRepository {
   PromotionsRepository(this._service, {PrefsHelper? prefs})
-      : _prefs = prefs ?? PrefsHelper.instance;
+    : _prefs = prefs ?? PrefsHelper.instance;
 
   final PromotionsService _service;
   final PrefsHelper _prefs;
 
-  String? get businessId => _prefs.profileId ?? _prefs.userId;
+  /// Id canónico para crear: userId IAM (fallback profileId).
+  String? get businessId {
+    final userId = _prefs.userId;
+    if (userId != null && userId.isNotEmpty) return userId;
+    final profileId = _prefs.profileId;
+    if (profileId != null && profileId.isNotEmpty) return profileId;
+    return null;
+  }
+
+  List<String> get _lookupBusinessIds {
+    final ids = <String>{};
+    final userId = _prefs.userId;
+    if (userId != null && userId.isNotEmpty) ids.add(userId);
+    final profileId = _prefs.profileId;
+    if (profileId != null && profileId.isNotEmpty) ids.add(profileId);
+    return ids.toList(growable: false);
+  }
 
   Future<Result<List<Promotion>>> loadMine() async {
-    final id = businessId;
-    if (id == null || id.isEmpty) {
+    final ids = _lookupBusinessIds;
+    if (ids.isEmpty) {
       return const Failure(UnauthorizedException('Sesion no disponible.'));
     }
-    final res = await _service.getByBusiness(id);
-    return res.when(
-      onSuccess: (json) =>
-          Success<List<Promotion>>(PromotionMapper.toPromotionList(json)),
-      onFailure: (e) => Failure<List<Promotion>>(e),
-    );
+    final byId = <String, Promotion>{};
+    ApiException? lastError;
+    var anySuccess = false;
+    for (final id in ids) {
+      final res = await _service.getByBusiness(id);
+      res.when(
+        onSuccess: (json) {
+          anySuccess = true;
+          for (final promo in PromotionMapper.toPromotionList(json)) {
+            byId[promo.id] = promo;
+          }
+        },
+        onFailure: (e) => lastError = e,
+      );
+    }
+    if (!anySuccess) {
+      return Failure<List<Promotion>>(
+        lastError ?? const UnauthorizedException('Sesion no disponible.'),
+      );
+    }
+    return Success<List<Promotion>>(byId.values.toList(growable: false));
   }
 
   Future<Result<List<Promotion>>> loadActiveMine() async {
-    final id = businessId;
-    if (id == null || id.isEmpty) {
+    final ids = _lookupBusinessIds;
+    if (ids.isEmpty) {
       return const Failure(UnauthorizedException('Sesion no disponible.'));
     }
+    final idSet = ids.toSet();
     final res = await _service.getActive();
     return res.when(
       onSuccess: (json) {
-        final active = PromotionMapper.toPromotionList(json)
-            .where((p) => p.businessId == id)
-            .toList();
+        final active = PromotionMapper.toPromotionList(
+          json,
+        ).where((p) => idSet.contains(p.businessId)).toList();
         return Success<List<Promotion>>(active);
       },
       onFailure: (e) => Failure<List<Promotion>>(e),
@@ -52,7 +84,8 @@ class PromotionsRepository {
   Future<Result<Promotion>> getById(String id) async {
     final res = await _service.getById(id);
     return res.when(
-      onSuccess: (json) => Success<Promotion>(PromotionMapper.toPromotion(json)),
+      onSuccess: (json) =>
+          Success<Promotion>(PromotionMapper.toPromotion(json)),
       onFailure: (e) => Failure<Promotion>(e),
     );
   }
@@ -86,8 +119,9 @@ class PromotionsRepository {
     );
     return res.when(
       onSuccess: (json) {
-        final newId =
-            json is Map<String, dynamic> ? json['promotionId'] as String? : null;
+        final newId = json is Map<String, dynamic>
+            ? json['promotionId'] as String?
+            : null;
         return Success<String>(newId ?? '');
       },
       onFailure: (e) => Failure<String>(e),
@@ -124,22 +158,14 @@ class PromotionsRepository {
   Future<Result<void>> delete(String id) async =>
       _toVoid(await _service.delete(id));
 
-  Future<Result<void>> publish(
-    String id, {
-    bool isBusinessVerified = true,
-  }) async {
-    final res = await _service.publish(
-      id,
-      PublishRequest(isBusinessVerified: isBusinessVerified),
-    );
-    return _toVoid(res);
-  }
+  Future<Result<void>> publish(String id) async =>
+      _toVoid(await _service.publish(id));
 
   Future<Result<void>> cancel(String id) async =>
       _toVoid(await _service.cancel(id));
 
   Result<void> _toVoid(Result<dynamic> res) => res.when(
-        onSuccess: (_) => const Success<void>(null),
-        onFailure: (e) => Failure<void>(e),
-      );
+    onSuccess: (_) => const Success<void>(null),
+    onFailure: (e) => Failure<void>(e),
+  );
 }

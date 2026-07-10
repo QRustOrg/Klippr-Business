@@ -15,15 +15,27 @@ class EditProfileScreen extends StatefulWidget {
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
+  static const _categories = {
+    'RESTAURANT': 'Restaurante',
+    'RETAIL': 'Comercio',
+    'SERVICES': 'Servicios',
+    'ENTERTAINMENT': 'Entretenimiento',
+    'HEALTH': 'Salud',
+    'OTHER': 'Otros',
+  };
+
+  final _formKey = GlobalKey<FormState>();
   late final TextEditingController _name;
-  late final TextEditingController _category;
   late final TextEditingController _description;
   late final TextEditingController _street;
   late final TextEditingController _city;
   late final TextEditingController _state;
   late final TextEditingController _country;
   late final TextEditingController _zip;
+  late String _category;
+  late bool _hadLocation;
   String _profileId = '';
+  String? _locationError;
 
   @override
   void initState() {
@@ -31,19 +43,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final profile = context.read<ProfileBloc>().state.profile;
     _profileId = profile?.id.value ?? '';
     _name = TextEditingController(text: profile?.businessName ?? '');
-    _category = TextEditingController(text: profile?.category?.name ?? '');
+    final category = profile?.category?.name?.toUpperCase();
+    _category = _categories.containsKey(category) ? category! : 'OTHER';
     _description = TextEditingController(text: profile?.description ?? '');
     _street = TextEditingController(text: profile?.location?.street ?? '');
     _city = TextEditingController(text: profile?.location?.city ?? '');
     _state = TextEditingController(text: profile?.location?.state ?? '');
     _country = TextEditingController(text: profile?.location?.country ?? '');
     _zip = TextEditingController(text: profile?.location?.postalCode ?? '');
+    _hadLocation = profile?.location != null;
   }
 
   @override
   void dispose() {
     _name.dispose();
-    _category.dispose();
     _description.dispose();
     _street.dispose();
     _city.dispose();
@@ -54,19 +67,41 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   void _save() {
-    if (_profileId.isEmpty) return;
+    if (_profileId.isEmpty || !_formKey.currentState!.validate()) return;
+    final location = [
+      _street.text.trim(),
+      _city.text.trim(),
+      _state.text.trim(),
+      _country.text.trim(),
+      _zip.text.trim(),
+    ];
+    final anyLocation = location.any((value) => value.isNotEmpty);
+    final completeLocation = location.every((value) => value.isNotEmpty);
+    if (anyLocation && !completeLocation) {
+      setState(
+        () => _locationError = 'Completa todos los campos de ubicación.',
+      );
+      return;
+    }
+    if (_hadLocation && !anyLocation) {
+      setState(
+        () => _locationError = 'La ubicación existente no se puede eliminar.',
+      );
+      return;
+    }
+    setState(() => _locationError = null);
     context.read<ProfileBloc>().add(
       UpdateBusinessProfileRequested(
         BusinessProfileUpdate(
           profileId: _profileId,
           businessName: _name.text.trim(),
-          category: _category.text.trim(),
+          category: _category,
           description: _description.text.trim(),
-          street: _street.text.trim(),
-          city: _city.text.trim(),
-          state: _state.text.trim(),
-          country: _country.text.trim(),
-          zipCode: _zip.text.trim(),
+          street: anyLocation ? location[0] : null,
+          city: anyLocation ? location[1] : null,
+          state: anyLocation ? location[2] : null,
+          country: anyLocation ? location[3] : null,
+          zipCode: anyLocation ? location[4] : null,
         ),
       ),
     );
@@ -88,32 +123,82 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       ),
       body: BlocConsumer<ProfileBloc, ProfileState>(
         listener: (context, state) {
-          if (state.actionMessage != null) {
-            Navigator.of(context).maybePop();
-          }
+          if (state.actionMessage != null) Navigator.of(context).maybePop();
         },
-        builder: (context, state) {
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
+        builder: (context, state) => SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Form(
+            key: _formKey,
             child: Column(
               children: [
-                _Field(label: 'Nombre comercial', controller: _name),
-                _Field(label: 'Categoria', controller: _category),
                 _Field(
-                  label: 'Descripcion',
+                  fieldKey: const Key('profile-name'),
+                  label: 'Nombre comercial',
+                  controller: _name,
+                  validator: (value) => value == null || value.trim().isEmpty
+                      ? 'Ingresa el nombre comercial.'
+                      : null,
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: DropdownButtonFormField<String>(
+                    key: const Key('profile-category'),
+                    initialValue: _category,
+                    decoration: _decoration('Categoría'),
+                    items: _categories.entries
+                        .map(
+                          (entry) => DropdownMenuItem(
+                            value: entry.key,
+                            child: Text(entry.value),
+                          ),
+                        )
+                        .toList(growable: false),
+                    onChanged: state.isSaving
+                        ? null
+                        : (value) => setState(() => _category = value!),
+                    validator: (value) =>
+                        value == null ? 'Selecciona una categoría.' : null,
+                  ),
+                ),
+                _Field(
+                  fieldKey: const Key('profile-description'),
+                  label: 'Descripción',
                   controller: _description,
                   maxLines: 3,
                 ),
-                _Field(label: 'Direccion', controller: _street),
-                _Field(label: 'Ciudad', controller: _city),
-                _Field(label: 'Estado', controller: _state),
-                _Field(label: 'Pais', controller: _country),
-                _Field(label: 'Codigo postal', controller: _zip),
+                _Field(
+                  fieldKey: const Key('profile-street'),
+                  label: 'Dirección',
+                  controller: _street,
+                ),
+                _Field(
+                  fieldKey: const Key('profile-city'),
+                  label: 'Ciudad',
+                  controller: _city,
+                ),
+                _Field(
+                  fieldKey: const Key('profile-state'),
+                  label: 'Estado',
+                  controller: _state,
+                ),
+                _Field(
+                  fieldKey: const Key('profile-country'),
+                  label: 'País',
+                  controller: _country,
+                ),
+                _Field(
+                  fieldKey: const Key('profile-zip'),
+                  label: 'Código postal',
+                  controller: _zip,
+                ),
+                if (_locationError != null) _ErrorText(_locationError!),
+                if (state.error != null) _ErrorText(state.error!),
                 const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
                   height: 52,
                   child: ElevatedButton(
+                    key: const Key('save-profile'),
                     onPressed: state.isSaving ? null : _save,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: PromoColors.purple,
@@ -134,45 +219,65 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
               ],
             ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _Field extends StatelessWidget {
-  const _Field({
-    required this.label,
-    required this.controller,
-    this.maxLines = 1,
-  });
-
-  final String label;
-  final TextEditingController controller;
-  final int maxLines;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: TextField(
-        controller: controller,
-        maxLines: maxLines,
-        decoration: InputDecoration(
-          labelText: label,
-          filled: true,
-          fillColor: PromoColors.fieldBg,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: PromoColors.purple),
           ),
         ),
       ),
     );
   }
 }
+
+class _ErrorText extends StatelessWidget {
+  const _ErrorText(this.message);
+  final String message;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Text(
+      message,
+      style: TextStyle(color: Theme.of(context).colorScheme.error),
+    ),
+  );
+}
+
+class _Field extends StatelessWidget {
+  const _Field({
+    required this.fieldKey,
+    required this.label,
+    required this.controller,
+    this.maxLines = 1,
+    this.validator,
+  });
+
+  final Key fieldKey;
+  final String label;
+  final TextEditingController controller;
+  final int maxLines;
+  final String? Function(String?)? validator;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 14),
+    child: TextFormField(
+      key: fieldKey,
+      controller: controller,
+      maxLines: maxLines,
+      validator: validator,
+      decoration: _decoration(label),
+    ),
+  );
+}
+
+InputDecoration _decoration(String label) => InputDecoration(
+  labelText: label,
+  filled: true,
+  fillColor: PromoColors.fieldBg,
+  border: OutlineInputBorder(
+    borderRadius: BorderRadius.circular(12),
+    borderSide: BorderSide.none,
+  ),
+  focusedBorder: OutlineInputBorder(
+    borderRadius: BorderRadius.circular(12),
+    borderSide: const BorderSide(color: PromoColors.purple),
+  ),
+);

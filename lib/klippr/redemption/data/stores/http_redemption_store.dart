@@ -21,7 +21,12 @@ class HttpRedemptionStore implements RedemptionStore {
   final RedemptionWebService _service;
   final PrefsHelper _prefs;
 
-  String? get _businessId => _prefs.profileId ?? _prefs.userId;
+  /// Id del negocio en redemptions: el backend usa BusinessProfile.Id.
+  String? get _businessId {
+    final profileId = _prefs.profileId;
+    if (profileId != null && profileId.isNotEmpty) return profileId;
+    return _prefs.userId;
+  }
 
   @override
   Future<Result<Redemption>> lookupToken(String uniqueToken) async {

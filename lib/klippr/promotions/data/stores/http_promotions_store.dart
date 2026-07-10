@@ -1,36 +1,99 @@
 import '../../../shared/data/network/api_exceptions.dart';
 import '../../../shared/data/network/result.dart';
 import '../../../shared/data/pref/prefs_helper.dart';
+import '../../../shared/data/pref/session_identity.dart';
 import '../../domain/models/promotion.dart';
 import '../../domain/stores/promotions_store.dart';
 import '../models/promotion_dto.dart';
 import '../network/promotions_web_service.dart';
 import '../network/requests/create_promotion_request.dart';
-import '../network/requests/publish_request.dart';
 import '../network/requests/update_promotion_request.dart';
 
 // author: Samuel Bonifacio
 //
 // Adaptador (hexagonal) que implementa el puerto [PromotionsStore] sobre el
-// backend HTTP de Klippr, vía [PromotionsWebService]. Parsea las respuestas a
-// entidades de dominio puras.
+// backend HTTP de Klippr, vía [PromotionsWebService].
 
 /// Adaptador HTTP del puerto [PromotionsStore].
 class HttpPromotionsStore implements PromotionsStore {
   /// Crea un [HttpPromotionsStore] sobre [_service].
   HttpPromotionsStore(this._service, {PrefsHelper? prefs})
-      : _prefs = prefs ?? PrefsHelper.instance;
+    : _prefs = prefs ?? PrefsHelper.instance;
 
   final PromotionsWebService _service;
   final PrefsHelper _prefs;
 
-  String? get _businessId => _prefs.profileId ?? _prefs.userId;
+  /// El backend (PromotionController.Create) ignora el businessId del body y
+  /// persiste la promo con `businessProfile.Id` (profileId), no con userId.
+  ///
+  /// Tras un create exitoso, [create] cachea ese profileId leyendo la promo.
+  Future<List<String>> _lookupBusinessIds() async {
+    final ids = <String>{};
+    final userId = await SessionIdentity.ensureUserId(_prefs);
+    if (userId != null && userId.isNotEmpty) ids.add(userId);
+
+    final profileId = _prefs.profileId;
+    if (profileId != null && profileId.isNotEmpty) ids.add(profileId);
+
+    return ids.toList(growable: false);
+  }
+
+  Future<String?> _requestBusinessId() async {
+    // El body se sobreescribe en el backend; enviamos userId (requerido UUID).
+    final userId = await SessionIdentity.ensureUserId(_prefs);
+    if (userId != null && userId.isNotEmpty) return userId;
+    final profileId = _prefs.profileId;
+    if (profileId != null && profileId.isNotEmpty) return profileId;
+    return null;
+  }
+
+  Future<void> _cacheOwnerFromPromotion(dynamic json) async {
+    if (json is! Map) return;
+    final businessId = json['businessId']?.toString();
+    if (businessId == null || businessId.isEmpty) return;
+    if (_prefs.profileId == businessId) return;
+    await _prefs.setProfileId(businessId);
+  }
 
   @override
   Future<Result<List<Promotion>>> loadMine() async {
-    final id = _businessId;
-    if (id == null || id.isEmpty) {
+    final ids = await _lookupBusinessIds();
+    if (ids.isEmpty) {
       return const Failure(UnauthorizedException('Sesion no disponible.'));
+    }
+
+    final byId = <String, Promotion>{};
+    ApiException? lastError;
+    var anySuccess = false;
+
+    for (final id in ids) {
+      final res = await loadByBusiness(id);
+      res.when(
+        onSuccess: (promotions) {
+          anySuccess = true;
+          for (final promo in promotions) {
+            byId[promo.id.value] = promo;
+          }
+        },
+        onFailure: (e) => lastError = e,
+      );
+    }
+
+    if (!anySuccess) {
+      return Failure<List<Promotion>>(
+        lastError ?? const UnauthorizedException('Sesion no disponible.'),
+      );
+    }
+    return Success<List<Promotion>>(byId.values.toList(growable: false));
+  }
+
+  @override
+  Future<Result<List<Promotion>>> loadByBusiness(String businessId) async {
+    final id = businessId.trim();
+    if (id.isEmpty) {
+      return const Failure(
+        ValidationException('businessId es requerido.'),
+      );
     }
     final res = await _service.getByBusiness(id);
     return res.when(
@@ -40,16 +103,26 @@ class HttpPromotionsStore implements PromotionsStore {
   }
 
   @override
-  Future<Result<List<Promotion>>> loadActiveMine() async {
-    final id = _businessId;
-    if (id == null || id.isEmpty) {
-      return const Failure(UnauthorizedException('Sesion no disponible.'));
-    }
+  Future<Result<List<Promotion>>> loadActive() async {
     final res = await _service.getActive();
     return res.when(
-      onSuccess: (json) {
-        final active = _toPromotionList(json)
-            .where((p) => p.businessId.value == id)
+      onSuccess: (json) => Success<List<Promotion>>(_toPromotionList(json)),
+      onFailure: (e) => Failure<List<Promotion>>(e),
+    );
+  }
+
+  @override
+  Future<Result<List<Promotion>>> loadActiveMine() async {
+    final ids = await _lookupBusinessIds();
+    if (ids.isEmpty) {
+      return const Failure(UnauthorizedException('Sesion no disponible.'));
+    }
+    final idSet = ids.toSet();
+    final res = await loadActive();
+    return res.when(
+      onSuccess: (promotions) {
+        final active = promotions
+            .where((p) => idSet.contains(p.businessId.value))
             .toList();
         return Success<List<Promotion>>(active);
       },
@@ -60,10 +133,11 @@ class HttpPromotionsStore implements PromotionsStore {
   @override
   Future<Result<Promotion>> getById(String id) async {
     final res = await _service.getById(id);
-    return res.when(
-      onSuccess: (json) => Success<Promotion>(_toPromotion(json)),
-      onFailure: (e) => Failure<Promotion>(e),
-    );
+    final err = res.errorOrNull;
+    if (err != null) return Failure<Promotion>(err);
+    final json = res.dataOrNull;
+    await _cacheOwnerFromPromotion(json);
+    return Success<Promotion>(_toPromotion(json));
   }
 
   @override
@@ -77,7 +151,7 @@ class HttpPromotionsStore implements PromotionsStore {
     required String imageKey,
     int? redemptionCap,
   }) async {
-    final id = _businessId;
+    final id = await _requestBusinessId();
     if (id == null || id.isEmpty) {
       return const Failure(UnauthorizedException('Sesion no disponible.'));
     }
@@ -94,14 +168,23 @@ class HttpPromotionsStore implements PromotionsStore {
         redemptionCap: redemptionCap,
       ),
     );
-    return res.when(
-      onSuccess: (json) {
-        final newId =
-            json is Map<String, dynamic> ? json['promotionId'] as String? : null;
-        return Success<String>(newId ?? '');
-      },
-      onFailure: (e) => Failure<String>(e),
-    );
+
+    final err = res.errorOrNull;
+    if (err != null) return Failure<String>(err);
+
+    final json = res.dataOrNull;
+    final newId = json is Map
+        ? (json['promotionId'] ?? json['PromotionId'])?.toString()
+        : null;
+
+    // Backend guarda businessId = profile.Id. Lo aprendemos de la promo creada
+    // para que el siguiente loadMine consulte el id correcto.
+    if (newId != null && newId.isNotEmpty) {
+      final detail = await _service.getById(newId);
+      await _cacheOwnerFromPromotion(detail.dataOrNull);
+    }
+
+    return Success<String>(newId ?? '');
   }
 
   @override
@@ -133,39 +216,54 @@ class HttpPromotionsStore implements PromotionsStore {
   }
 
   @override
-  Future<Result<void>> delete(String id) async => _toVoid(await _service.delete(id));
+  Future<Result<void>> delete(String id) async =>
+      _toVoid(await _service.delete(id));
 
   @override
-  Future<Result<void>> publish(
-    String id, {
-    bool isBusinessVerified = true,
-  }) async {
-    final res = await _service.publish(
-      id,
-      PublishRequest(isBusinessVerified: isBusinessVerified),
-    );
-    return _toVoid(res);
-  }
+  Future<Result<void>> publish(String id) async =>
+      _toVoid(await _service.publish(id));
 
   @override
-  Future<Result<void>> cancel(String id) async => _toVoid(await _service.cancel(id));
+  Future<Result<void>> cancel(String id) async =>
+      _toVoid(await _service.cancel(id));
 
   Result<void> _toVoid(Result<dynamic> res) => res.when(
-        onSuccess: (_) => const Success<void>(null),
-        onFailure: (e) => Failure<void>(e),
-      );
+    onSuccess: (_) => const Success<void>(null),
+    onFailure: (e) => Failure<void>(e),
+  );
 
   Promotion _toPromotion(dynamic json) {
-    if (json is Map<String, dynamic>) return PromotionDto.fromJson(json).toDomain();
+    if (json is Map<String, dynamic>) {
+      return PromotionDto.fromJson(json).toDomain();
+    }
+    if (json is Map) {
+      return PromotionDto.fromJson(Map<String, dynamic>.from(json)).toDomain();
+    }
     return PromotionDto.fromJson(const <String, dynamic>{}).toDomain();
   }
 
   List<Promotion> _toPromotionList(dynamic json) {
     if (json is List) {
       return json
-          .whereType<Map<String, dynamic>>()
-          .map((item) => PromotionDto.fromJson(item).toDomain())
+          .map((item) {
+            if (item is Map<String, dynamic>) {
+              return PromotionDto.fromJson(item).toDomain();
+            }
+            if (item is Map) {
+              return PromotionDto.fromJson(
+                Map<String, dynamic>.from(item),
+              ).toDomain();
+            }
+            return null;
+          })
+          .whereType<Promotion>()
           .toList();
+    }
+    if (json is Map<String, dynamic>) {
+      for (final key in const ['data', 'items', 'content', 'promotions']) {
+        final nested = json[key];
+        if (nested is List) return _toPromotionList(nested);
+      }
     }
     return const [];
   }

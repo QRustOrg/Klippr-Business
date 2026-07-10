@@ -16,8 +16,14 @@ abstract interface class PromotionsStore {
   /// Carga todas las promociones del negocio autenticado.
   Future<Result<List<Promotion>>> loadMine();
 
+  /// Lista promociones de un negocio: GET /api/promotions/businesses/{businessId}.
+  Future<Result<List<Promotion>>> loadByBusiness(String businessId);
+
   /// Carga solo las promociones activas del negocio autenticado.
   Future<Result<List<Promotion>>> loadActiveMine();
+
+  /// Carga las promociones activas de todos los negocios.
+  Future<Result<List<Promotion>>> loadActive();
 
   /// Obtiene una promoción fresca por id (usado antes de abrir edición).
   Future<Result<Promotion>> getById(String id);
@@ -51,7 +57,7 @@ abstract interface class PromotionsStore {
   Future<Result<void>> delete(String id);
 
   /// Publica una promoción.
-  Future<Result<void>> publish(String id, {bool isBusinessVerified = true});
+  Future<Result<void>> publish(String id);
 
   /// Cancela una promoción.
   Future<Result<void>> cancel(String id);

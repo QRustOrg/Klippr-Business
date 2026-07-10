@@ -50,23 +50,47 @@ class HttpAnalyticsStore implements AnalyticsStore {
     String businessId,
     String promotionId,
   ) async {
+    final all = await loadPromotionRedemptionCounts(businessId);
+    return all.when(
+      onSuccess: (map) => Success<int>(map[promotionId] ?? 0),
+      onFailure: (error) => Failure<int>(error),
+    );
+  }
+
+  @override
+  Future<Result<Map<String, int>>> loadPromotionRedemptionCounts(
+    String businessId,
+  ) async {
+    if (businessId.isEmpty) {
+      return const Success<Map<String, int>>(<String, int>{});
+    }
     final res = await _service.getRedemptionsByBusiness(businessId);
     return res.when(
       onSuccess: (json) {
+        final counts = <String, int>{};
         if (json is List) {
-          final count = json.where((item) {
-            if (item is! Map<String, dynamic>) return false;
-            final pid = item['promotionId']?.toString() ?? '';
-            final status = item['status']?.toString() ?? '';
-            return pid == promotionId && status == 'Redeemed';
-          }).length;
-          return Success<int>(count);
+          for (final item in json) {
+            if (item is! Map) continue;
+            final map = item is Map<String, dynamic>
+                ? item
+                : Map<String, dynamic>.from(item);
+            final pid = map['promotionId']?.toString() ?? '';
+            final status = map['status']?.toString() ?? '';
+            if (pid.isEmpty) continue;
+            // Backend usa "Redeemed" / "Confirmed" según versión.
+            final redeemed = status.toLowerCase() == 'redeemed' ||
+                status.toLowerCase() == 'confirmed';
+            if (!redeemed) continue;
+            counts[pid] = (counts[pid] ?? 0) + 1;
+          }
         }
-        return const Success<int>(0);
+        return Success<Map<String, int>>(counts);
       },
       onFailure: (error) {
-        if (error is NotFoundException) return const Success<int>(0);
-        return Failure<int>(error);
+        if (error is NotFoundException) {
+          return const Success<Map<String, int>>(<String, int>{});
+        }
+        return Failure<Map<String, int>>(error);
       },
     );
   }

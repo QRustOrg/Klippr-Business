@@ -41,7 +41,14 @@ class _FakePromotionsStore implements PromotionsStore {
   Future<Result<List<Promotion>>> loadMine() async => const Success([]);
 
   @override
+  Future<Result<List<Promotion>>> loadByBusiness(String businessId) async =>
+      const Success([]);
+
+  @override
   Future<Result<List<Promotion>>> loadActiveMine() async => const Success([]);
+
+  @override
+  Future<Result<List<Promotion>>> loadActive() async => const Success([]);
 
   @override
   Future<Result<Promotion>> getById(String id) async =>
@@ -76,10 +83,7 @@ class _FakePromotionsStore implements PromotionsStore {
   Future<Result<void>> delete(String id) async => const Success(null);
 
   @override
-  Future<Result<void>> publish(
-    String id, {
-    bool isBusinessVerified = true,
-  }) async => const Success(null);
+  Future<Result<void>> publish(String id) async => const Success(null);
 
   @override
   Future<Result<void>> cancel(String id) async => const Success(null);

@@ -221,7 +221,24 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
     final bloc = context.read<PromotionsBloc>();
     final cap = _redemptionCap();
     final amount = _parseDiscount(_discount.text);
+
+    // Backend exige endDate > startDate (TimeFrame). El date picker devuelve
+    // medianoche; si el usuario elige "hoy", end quedaría ANTES de now y
+    // el API responde 400. Usamos fin del día local para la fecha elegida.
+    final picked = _endDateValue!;
+    final end = DateTime(picked.year, picked.month, picked.day, 23, 59, 59);
     final start = DateTime.now();
+    if (!end.isAfter(start)) {
+      setState(() => _dateError = true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'La fecha de fin debe ser posterior a ahora. Elige otro día.',
+          ),
+        ),
+      );
+      return;
+    }
 
     if (_isEdit) {
       bloc.add(
@@ -232,7 +249,7 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
           discountAmount: amount,
           discountType: DiscountType.percentage,
           startDate: widget.promotion!.startDate ?? start,
-          endDate: _endDateValue!,
+          endDate: end,
           imageKey: _selectedImage!.key,
           redemptionCap: cap,
         ),
@@ -245,7 +262,7 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
           discountAmount: amount,
           discountType: DiscountType.percentage,
           startDate: start,
-          endDate: _endDateValue!,
+          endDate: end,
           imageKey: _selectedImage!.key,
           redemptionCap: cap,
         ),

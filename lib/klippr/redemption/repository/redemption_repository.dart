@@ -11,7 +11,12 @@ class RedemptionRepository {
   final RedemptionService _service;
   final PrefsHelper _prefs;
 
-  String? get businessId => _prefs.profileId ?? _prefs.userId;
+  /// Id del negocio en redemptions: BusinessProfile.Id (fallback userId).
+  String? get businessId {
+    final profileId = _prefs.profileId;
+    if (profileId != null && profileId.isNotEmpty) return profileId;
+    return _prefs.userId;
+  }
 
   Future<Result<Redemption>> lookupToken(String uniqueToken) async {
     final bid = businessId;

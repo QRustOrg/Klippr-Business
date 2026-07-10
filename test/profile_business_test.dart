@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,10 +20,12 @@ import 'package:klippr/klippr/profile/domain/models/business_profile.dart';
 import 'package:klippr/klippr/profile/domain/models/business_profile_update.dart';
 import 'package:klippr/klippr/profile/domain/models/verification_document.dart';
 import 'package:klippr/klippr/profile/domain/stores/profile_store.dart';
+import 'package:klippr/klippr/profile/presentation/views/edit_profile_screen.dart';
 import 'package:klippr/klippr/profile/presentation/views/profile_screen.dart';
 import 'package:klippr/klippr/promotions/application/bloc/promotions_bloc.dart';
 import 'package:klippr/klippr/promotions/domain/models/promotion.dart';
 import 'package:klippr/klippr/promotions/domain/stores/promotions_store.dart';
+import 'package:klippr/klippr/promotions/presentation/views/promo_colors.dart';
 import 'package:klippr/klippr/shared/data/network/api_client.dart';
 import 'package:klippr/klippr/shared/data/network/api_exceptions.dart';
 import 'package:klippr/klippr/shared/data/network/result.dart';
@@ -67,6 +71,69 @@ void main() {
       'POST /api/verification/submit',
       'GET /api/Users/user-1',
     ]);
+  });
+
+  test('business profile update serializes the flat API contract', () {
+    const update = BusinessProfileUpdate(
+      profileId: 'profile-1',
+      businessName: 'Klippr Cafe',
+      category: 'RESTAURANT',
+      description: 'Cafe de barrio',
+      street: 'Calle 1',
+      city: 'Bogota',
+      state: 'Cundinamarca',
+      country: 'Colombia',
+      zipCode: '110111',
+    );
+
+    expect(update.toJson(), {
+      'profileId': 'profile-1',
+      'businessName': 'Klippr Cafe',
+      'category': 'RESTAURANT',
+      'description': 'Cafe de barrio',
+      'street': 'Calle 1',
+      'city': 'Bogota',
+      'state': 'Cundinamarca',
+      'country': 'Colombia',
+      'zipCode': '110111',
+    });
+  });
+
+  test('profile service sends the flat update body unchanged', () async {
+    SharedPreferences.setMockInitialValues({'session_token': 'token'});
+    final prefs = PrefsHelper.test(await SharedPreferences.getInstance());
+    Map<String, dynamic>? sentBody;
+    final client = MockClient((request) async {
+      sentBody = jsonDecode(request.body) as Map<String, dynamic>;
+      return http.Response(
+        '{"id":"profile-1","userId":"user-1","businessName":"Cafe",'
+        '"category":{"name":"RESTAURANT"},"isActive":true}',
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+    final service = ProfileWebService(ApiClient(client: client, prefs: prefs));
+
+    await service.updateBusinessProfile(
+      const BusinessProfileUpdate(
+        profileId: 'profile-1',
+        businessName: 'Cafe',
+        category: 'RESTAURANT',
+        description: '',
+      ).toJson(),
+    );
+
+    expect(sentBody, {
+      'profileId': 'profile-1',
+      'businessName': 'Cafe',
+      'category': 'RESTAURANT',
+      'description': '',
+      'street': null,
+      'city': null,
+      'state': null,
+      'country': null,
+      'zipCode': null,
+    });
   });
 
   test(
@@ -115,6 +182,49 @@ void main() {
       expect(result.dataOrNull?.id.value, 'profile-9');
       expect(result.dataOrNull?.email, 'biz@test.com');
       expect(prefs.profileId, 'profile-9');
+    },
+  );
+
+  test(
+    'profile store propagates a failed update instead of returning old data',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        'session_token': 'token',
+        'user_id': 'user-1',
+        'profile_id': 'profile-1',
+      });
+      final prefs = PrefsHelper.test(await SharedPreferences.getInstance());
+      final client = MockClient((request) async {
+        if (request.method == 'PUT') {
+          return http.Response(
+            '{"message":"No se pudo actualizar"}',
+            500,
+            headers: {'content-type': 'application/json'},
+          );
+        }
+        return http.Response(
+          '{"id":"profile-1","userId":"user-1",'
+          '"businessName":"Nombre anterior",'
+          '"category":{"name":"RESTAURANT"},"isActive":true}',
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+      final store = HttpProfileStore(
+        ProfileWebService(ApiClient(client: client, prefs: prefs)),
+        prefs: prefs,
+      );
+
+      final result = await store.updateBusinessProfile(
+        const BusinessProfileUpdate(
+          profileId: 'profile-1',
+          businessName: 'Nombre nuevo',
+          category: 'RESTAURANT',
+        ),
+      );
+
+      expect(result.isSuccess, isFalse);
+      expect(result.errorOrNull?.message, 'No se pudo actualizar');
     },
   );
 
@@ -189,9 +299,183 @@ void main() {
     expect(find.text('Editar'), findsOneWidget);
     expect(find.text('Cerrar sesión'), findsOneWidget);
   });
+
+  testWidgets('profile badge reflects verification state', (tester) async {
+    for (final (status, label, background, foreground) in [
+      (
+        'Approved',
+        'BUSINESS',
+        PromoColors.statGreenBg,
+        PromoColors.statGreenIcon,
+      ),
+      ('Rejected', 'Rechazado', const Color(0xFFFFD6D2), PromoColors.errorRed),
+      (
+        'Pending',
+        'Pendiente',
+        PromoColors.statAmberBg,
+        PromoColors.statAmberIcon,
+      ),
+    ]) {
+      await tester.pumpWidget(
+        MultiBlocProvider(
+          providers: [
+            BlocProvider(
+              create: (_) => ProfileBloc(
+                _FakeProfileStore(_profile(verificationStatus: status)),
+              ),
+            ),
+            BlocProvider(create: (_) => PromotionsBloc(_FakePromotionsStore())),
+            BlocProvider(create: (_) => AuthBloc(_FakeAuthStore())),
+          ],
+          child: MaterialApp(
+            home: ProfileScreen(analyticsStore: _FakeAnalyticsStore()),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text(label), findsNWidgets(2));
+      final badgeText = find.text(label).first;
+      final badge = tester.widget<Container>(
+        find
+            .ancestor(
+              of: badgeText,
+              matching: find.byWidgetPredicate(
+                (widget) =>
+                    widget is Container &&
+                    (widget.decoration as BoxDecoration?)?.borderRadius ==
+                        BorderRadius.circular(999),
+              ),
+            )
+            .first,
+      );
+      final decoration = badge.decoration! as BoxDecoration;
+      expect(decoration.color, background);
+      expect(tester.widget<Text>(badgeText).style?.color, foreground);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+    }
+  });
+
+  testWidgets('edit profile validates name category and complete location', (
+    tester,
+  ) async {
+    final bloc = await _loadedProfileBloc(
+      _FakeProfileStore(
+        _profile().copyWith(
+          category: const BusinessCategory(name: 'RESTAURANT'),
+        ),
+      ),
+    );
+    addTearDown(bloc.close);
+    await tester.pumpWidget(
+      BlocProvider.value(
+        value: bloc,
+        child: const MaterialApp(home: EditProfileScreen()),
+      ),
+    );
+
+    expect(find.byKey(const Key('profile-category')), findsOneWidget);
+    await tester.enterText(find.byKey(const Key('profile-name')), '');
+    await tester.ensureVisible(find.byKey(const Key('save-profile')));
+    await tester.tap(find.byKey(const Key('save-profile')));
+    await tester.pump();
+    expect(find.text('Ingresa el nombre comercial.'), findsOneWidget);
+
+    await tester.enterText(find.byKey(const Key('profile-name')), 'Cafe');
+    await tester.enterText(find.byKey(const Key('profile-street')), 'Calle 1');
+    await tester.ensureVisible(find.byKey(const Key('save-profile')));
+    await tester.tap(find.byKey(const Key('save-profile')));
+    await tester.pump();
+    expect(
+      find.text('Completa todos los campos de ubicación.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('failed profile update stays on edit and shows the API error', (
+    tester,
+  ) async {
+    final bloc = await _loadedProfileBloc(
+      _FailingProfileStore(
+        _profile().copyWith(
+          category: const BusinessCategory(name: 'RESTAURANT'),
+        ),
+      ),
+    );
+    addTearDown(bloc.close);
+    await tester.pumpWidget(
+      BlocProvider.value(
+        value: bloc,
+        child: const MaterialApp(home: EditProfileScreen()),
+      ),
+    );
+
+    await tester.ensureVisible(find.byKey(const Key('save-profile')));
+    await tester.tap(find.byKey(const Key('save-profile')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Editar perfil'), findsOneWidget);
+    expect(find.text('No se pudo actualizar'), findsOneWidget);
+  });
+
+  testWidgets(
+    'edit profile does not pretend an existing location was deleted',
+    (tester) async {
+      final bloc = await _loadedProfileBloc(
+        _FakeProfileStore(
+          _profile().copyWith(
+            category: const BusinessCategory(name: 'RESTAURANT'),
+            location: const BusinessLocation(
+              street: 'Calle 1',
+              city: 'Bogota',
+              state: 'Cundinamarca',
+              country: 'Colombia',
+              postalCode: '110111',
+            ),
+          ),
+        ),
+      );
+      addTearDown(bloc.close);
+      await tester.pumpWidget(
+        BlocProvider.value(
+          value: bloc,
+          child: const MaterialApp(home: EditProfileScreen()),
+        ),
+      );
+
+      for (final key in const [
+        'profile-street',
+        'profile-city',
+        'profile-state',
+        'profile-country',
+        'profile-zip',
+      ]) {
+        await tester.enterText(find.byKey(Key(key)), '');
+      }
+      await tester.ensureVisible(find.byKey(const Key('save-profile')));
+      await tester.tap(find.byKey(const Key('save-profile')));
+      await tester.pump();
+
+      expect(
+        find.text('La ubicación existente no se puede eliminar.'),
+        findsOneWidget,
+      );
+    },
+  );
 }
 
-BusinessProfile _profile({String businessName = 'Klippr Cafe'}) {
+Future<ProfileBloc> _loadedProfileBloc(ProfileStore store) async {
+  final bloc = ProfileBloc(store)..add(const LoadBusinessProfile());
+  await bloc.stream.firstWhere((state) => state.profile != null);
+  return bloc;
+}
+
+BusinessProfile _profile({
+  String businessName = 'Klippr Cafe',
+  String verificationStatus = 'Pending',
+}) {
   return BusinessProfile(
     id: const Id('profile-1'),
     userId: const Id('user-1'),
@@ -199,7 +483,7 @@ BusinessProfile _profile({String businessName = 'Klippr Cafe'}) {
     taxId: '20123456789',
     email: 'biz@test.com',
     role: 'BUSINESS',
-    verificationStatus: 'Pending',
+    verificationStatus: verificationStatus,
     isActive: true,
     createdAt: DateTime.utc(2026, 1),
   );
@@ -228,6 +512,15 @@ class _FakeProfileStore implements ProfileStore {
   ) async => const Success(null);
 }
 
+class _FailingProfileStore extends _FakeProfileStore {
+  _FailingProfileStore(super.profile);
+
+  @override
+  Future<Result<BusinessProfile>> updateBusinessProfile(
+    BusinessProfileUpdate update,
+  ) async => const Failure(ServerException('No se pudo actualizar'));
+}
+
 class _FakeAnalyticsStore implements AnalyticsStore {
   @override
   Future<Result<BusinessDashboardMetrics>> loadDashboard(
@@ -249,6 +542,11 @@ class _FakeAnalyticsStore implements AnalyticsStore {
     String businessId,
     String promotionId,
   ) async => const Success(9);
+
+  @override
+  Future<Result<Map<String, int>>> loadPromotionRedemptionCounts(
+    String businessId,
+  ) async => const Success({'promo-1': 9});
 
   @override
   Future<Result<CampaignMetrics>> loadCampaignMetrics(
@@ -292,7 +590,14 @@ class _FakePromotionsStore implements PromotionsStore {
   ]);
 
   @override
+  Future<Result<List<Promotion>>> loadByBusiness(String businessId) async =>
+      loadMine();
+
+  @override
   Future<Result<List<Promotion>>> loadActiveMine() async => loadMine();
+
+  @override
+  Future<Result<List<Promotion>>> loadActive() async => loadMine();
 
   @override
   Future<Result<Promotion>> getById(String id) async =>
@@ -327,10 +632,7 @@ class _FakePromotionsStore implements PromotionsStore {
   Future<Result<void>> delete(String id) async => const Success(null);
 
   @override
-  Future<Result<void>> publish(
-    String id, {
-    bool isBusinessVerified = true,
-  }) async => const Success(null);
+  Future<Result<void>> publish(String id) async => const Success(null);
 
   @override
   Future<Result<void>> cancel(String id) async => const Success(null);

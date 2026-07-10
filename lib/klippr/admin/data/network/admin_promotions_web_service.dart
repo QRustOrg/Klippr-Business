@@ -8,8 +8,8 @@ class AdminPromotionsWebService {
 
   static const String _base = '/api/admin/promotions';
 
-  Future<Result<dynamic>> getAllPromotions() =>
-      _api.get('/api/promotions');
+  /// Lista todas las promociones: GET /api/promotions (body completo).
+  Future<Result<dynamic>> getAllPromotions() => _api.get('/api/promotions');
 
   Future<Result<dynamic>> takedownPromotion(String promotionId) =>
       _api.post('$_base/$promotionId/takedown');

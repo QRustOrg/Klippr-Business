@@ -2,6 +2,7 @@ import 'package:get_it/get_it.dart';
 
 import 'klippr/admin/admin_dependencies.dart';
 import 'klippr/analytics/analytics_dependencies.dart';
+import 'klippr/community/repository/reviews_repository.dart';
 import 'klippr/iam/iam_dependencies.dart';
 import 'klippr/profile/profile_dependencies.dart';
 import 'klippr/promotions/promotions_dependencies.dart';
@@ -31,10 +32,13 @@ abstract final class ServiceLocator {
 
     // Bounded contexts (cada uno depende solo de la infraestructura compartida).
     IamDependencies.register(sl);
+    // Profile antes de Promotions: el store de promos resuelve profileId
+    // (el backend indexa promociones por BusinessProfile.Id).
+    ProfileDependencies.register(sl);
     PromotionsDependencies.register(sl);
     RedemptionDependencies.register(sl);
     AnalyticsDependencies.register(sl);
-    ProfileDependencies.register(sl);
+    sl.registerLazySingleton<ReviewsRepository>(() => ReviewsRepository(sl()));
     registerAdminDependencies(sl);
   }
 }

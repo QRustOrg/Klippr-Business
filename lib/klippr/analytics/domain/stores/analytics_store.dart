@@ -23,6 +23,13 @@ abstract interface class AnalyticsStore {
     String promotionId,
   );
 
+  /// Cuenta redenciones confirmadas agrupadas por `promotionId` para un negocio.
+  ///
+  /// Una sola llamada de red; útil para el dashboard (total + por promo).
+  Future<Result<Map<String, int>>> loadPromotionRedemptionCounts(
+    String businessId,
+  );
+
   /// Obtiene métricas de una campaña/promoción concreta.
   Future<Result<CampaignMetrics>> loadCampaignMetrics(String campaignId);
 

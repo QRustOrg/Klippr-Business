@@ -4,7 +4,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../analytics/data/network/analytics_web_service.dart';
 import '../../../analytics/data/stores/http_analytics_store.dart';
 import '../../../analytics/domain/stores/analytics_store.dart';
+import '../../../community/presentation/views/reviews_performance_screen.dart';
 import '../../../profile/application/bloc/profile_bloc.dart';
+import '../../../profile/application/bloc/profile_event.dart';
 import '../../../profile/presentation/navigation/profile_router.dart';
 import '../../../redemption/application/bloc/redemption_bloc.dart';
 import '../../../redemption/presentation/navigation/redemption_router.dart';
@@ -38,69 +40,107 @@ class BusinessHomeScreen extends StatefulWidget {
   State<BusinessHomeScreen> createState() => _BusinessHomeScreenState();
 }
 
-class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
+class _BusinessHomeScreenState extends State<BusinessHomeScreen>
+    with WidgetsBindingObserver {
   late final AnalyticsStore _analyticsStore;
-  final Map<String, Future<Result<int>>> _redemptionCountFutures = {};
-  String _totalRedemptionsKey = '';
-  Future<int>? _totalRedemptionsFuture;
+
+  /// Generación de métricas: se incrementa para invalidar FutureBuilders.
+  int _metricsEpoch = 0;
+  String _countsCacheKey = '';
+  Future<Map<String, int>>? _redemptionCountsFuture;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _analyticsStore =
         widget._analyticsStore ??
         HttpAnalyticsStore(AnalyticsWebService(ApiClient()));
+    // El backend guarda promos con profileId. Cargar perfil primero cachea
+    // ese id; luego LoadPromotions puede listar correctamente.
+    try {
+      context.read<ProfileBloc>().add(const LoadBusinessProfile());
+    } catch (_) {
+      // ProfileBloc no disponible en algunos tests.
+    }
     context.read<PromotionsBloc>().add(const LoadPromotions());
   }
 
-  Future<Result<int>> _redemptionsFor(String promotionId) {
-    final businessId = _safeBusinessId();
-    return _redemptionCountFutures.putIfAbsent(
-      promotionId,
-      () => _analyticsStore.loadPromotionRedemptions(businessId, promotionId),
-    );
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      // Al volver del background (p. ej. tras canjear en otro flujo).
+      _refreshDashboard();
+    }
   }
 
   String _safeBusinessId() {
     try {
-      return PrefsHelper.instance.userId ?? '';
+      final prefs = PrefsHelper.instance;
+      // Analytics/redemptions usan BusinessProfile.Id en el backend.
+      final profileId = prefs.profileId;
+      if (profileId != null && profileId.isNotEmpty) return profileId;
+      return prefs.userId ?? '';
     } on StateError {
       return '';
     }
   }
 
-  Future<int> _totalRedemptions(List<Promotion> promotions) {
-    final key = promotions.map((p) => p.id.value).join('|');
-    if (_totalRedemptionsKey == key && _totalRedemptionsFuture != null) {
-      return _totalRedemptionsFuture!;
-    }
-
-    _totalRedemptionsKey = key;
-    _totalRedemptionsFuture = _loadTotalRedemptions(promotions);
-    return _totalRedemptionsFuture!;
+  void _invalidateMetricsCache() {
+    _metricsEpoch++;
+    _countsCacheKey = '';
+    _redemptionCountsFuture = null;
   }
 
-  Future<int> _loadTotalRedemptions(List<Promotion> promotions) async {
-    if (promotions.isEmpty) return 0;
-    final counts = await Future.wait<int>(
-      promotions.map((p) async {
-        final result = await _redemptionsFor(p.id.value);
-        return result.dataOrNull ?? 0;
-      }),
-    );
-    return counts.fold<int>(0, (sum, count) => sum + count);
-  }
-
-  void _openCreate({Promotion? promotion}) {
+  /// Recarga promos + canjes (publicadas/activas/expiradas salen del bloc).
+  Future<void> _refreshDashboard() async {
+    if (!mounted) return;
+    _invalidateMetricsCache();
+    setState(() {});
     final bloc = context.read<PromotionsBloc>();
-    Navigator.of(
+    bloc.add(const LoadPromotions());
+    await bloc.stream.firstWhere((s) => !s.isLoading);
+    if (mounted) setState(() {});
+  }
+
+  Future<Map<String, int>> _redemptionCounts(List<Promotion> promotions) {
+    final key =
+        '$_metricsEpoch|${_safeBusinessId()}|${promotions.map((p) => p.id.value).join('|')}';
+    if (_countsCacheKey == key && _redemptionCountsFuture != null) {
+      return _redemptionCountsFuture!;
+    }
+    _countsCacheKey = key;
+    _redemptionCountsFuture = _loadRedemptionCounts();
+    return _redemptionCountsFuture!;
+  }
+
+  Future<Map<String, int>> _loadRedemptionCounts() async {
+    final businessId = _safeBusinessId();
+    final result = await _analyticsStore.loadPromotionRedemptionCounts(
+      businessId,
+    );
+    return result.dataOrNull ?? const {};
+  }
+
+  Future<void> _openCreate({Promotion? promotion}) async {
+    final bloc = context.read<PromotionsBloc>();
+    await Navigator.of(
       context,
     ).push(PromotionsRouter.create(bloc, promotion: promotion));
+    // Crear/editar ya recarga el bloc; invalidamos canjes al volver.
+    if (mounted) await _refreshDashboard();
   }
 
-  void _openScan() {
+  Future<void> _openScan() async {
     final redemptionBloc = context.read<RedemptionBloc>();
-    Navigator.of(context).push(RedemptionRouter.scan(redemptionBloc));
+    await Navigator.of(context).push(RedemptionRouter.scan(redemptionBloc));
+    if (mounted) await _refreshDashboard();
   }
 
   void _requestEdit(Promotion promotion) {
@@ -117,14 +157,25 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
     bloc.add(FetchPromotionForEdit(promotion.id.value));
   }
 
-  void _openActivePromotions() {
+  Future<void> _openActivePromotions() async {
     final bloc = context.read<PromotionsBloc>();
-    Navigator.of(context).push(PromotionsRouter.active(bloc));
+    await Navigator.of(context).push(PromotionsRouter.active(bloc));
+    if (mounted) await _refreshDashboard();
   }
 
-  void _openHistorial() {
+  Future<void> _openHistorial() async {
     final bloc = context.read<PromotionsBloc>();
-    Navigator.of(context).push(RedemptionRouter.historyList(bloc));
+    await Navigator.of(context).push(RedemptionRouter.historyList(bloc));
+    if (mounted) await _refreshDashboard();
+  }
+
+  Future<void> _openReviews() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ReviewsPerformanceScreen(profileId: _safeBusinessId()),
+      ),
+    );
+    if (mounted) await _refreshDashboard();
   }
 
   Future<bool> _confirm(String title, String message) async {
@@ -167,6 +218,9 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
                     const PromotionsFlagsConsumed(),
                   );
                 } else if (state.actionMessage != null) {
+                  // Publicar / cancelar / eliminar / crear: revalidar canjes.
+                  _invalidateMetricsCache();
+                  setState(() {});
                   ScaffoldMessenger.of(
                     context,
                   ).showSnackBar(SnackBar(content: Text(state.actionMessage!)));
@@ -182,17 +236,9 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
                 }
               },
               builder: (context, state) {
+                final countsFuture = _redemptionCounts(state.promotions);
                 return RefreshIndicator(
-                  onRefresh: () async {
-                    final bloc = context.read<PromotionsBloc>();
-                    setState(() {
-                      _redemptionCountFutures.clear();
-                      _totalRedemptionsKey = '';
-                      _totalRedemptionsFuture = null;
-                    });
-                    bloc.add(const LoadPromotions());
-                    await bloc.stream.firstWhere((s) => !s.isLoading);
-                  },
+                  onRefresh: _refreshDashboard,
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -200,15 +246,34 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         const SizedBox(height: 20),
-                        FutureBuilder<int>(
-                          future: _totalRedemptions(state.promotions),
-                          builder: (context, snapshot) => _DashboardHero(
-                            totalRedemptions: snapshot.data,
-                            activePromotions: state.activos,
-                          ),
+                        FutureBuilder<Map<String, int>>(
+                          future: countsFuture,
+                          builder: (context, snapshot) {
+                            final total = snapshot.hasData
+                                ? snapshot.data!.values.fold<int>(
+                                    0,
+                                    (sum, n) => sum + n,
+                                  )
+                                : null;
+                            return _DashboardHero(
+                              totalRedemptions: total,
+                              activePromotions: state.activos,
+                            );
+                          },
                         ),
                         const SizedBox(height: 16),
-                        _statsGrid(state),
+                        _statsGrid(state, countsFuture),
+                        const SizedBox(height: 12),
+                        OutlinedButton.icon(
+                          onPressed: _openReviews,
+                          icon: const Icon(Icons.reviews_outlined),
+                          label: const Text('Rendimiento y reseñas'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: PromoColors.purple,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            side: const BorderSide(color: PromoColors.purple),
+                          ),
+                        ),
                         const SizedBox(height: 16),
                         _SuggestedPromoCard(onCreate: () => _openCreate()),
                         const SizedBox(height: 16),
@@ -250,11 +315,32 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
                                 child: _PromotionCard(
                                   promotion: p,
                                   onEdit: () => _requestEdit(p),
-                                  redemptionsFuture: _redemptionsFor(
-                                    p.id.value,
+                                  redemptionsFuture: countsFuture.then(
+                                    (map) => Success<int>(map[p.id.value] ?? 0),
                                   ),
                                   onPublish: () async {
                                     if (state.actionInProgress) return;
+                                    try {
+                                      final profile = context
+                                          .read<ProfileBloc>()
+                                          .state
+                                          .profile;
+                                      if (profile != null &&
+                                          !profile.isVerified) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'Tu negocio debe estar verificado antes de publicar promociones.',
+                                            ),
+                                          ),
+                                        );
+                                        return;
+                                      }
+                                    } catch (_) {
+                                      // ProfileBloc no disponible en tests aislados.
+                                    }
                                     if (await _confirm(
                                       'Publicar promocion',
                                       '¿Publicar "${p.title}"?',
@@ -313,21 +399,31 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
     );
   }
 
-  Widget _statsGrid(PromotionsState state) {
+  Widget _statsGrid(
+    PromotionsState state,
+    Future<Map<String, int>> countsFuture,
+  ) {
     return Column(
       children: [
         Row(
           children: [
             Expanded(
-              child: FutureBuilder<int>(
-                future: _totalRedemptions(state.promotions),
-                builder: (context, snapshot) => _StatCard(
-                  title: 'Canjes',
-                  value: snapshot.data?.toString() ?? '--',
-                  icon: Icons.qr_code_2,
-                  iconBg: PromoColors.statPurpleBg,
-                  iconTint: PromoColors.statPurpleIcon,
-                ),
+              child: FutureBuilder<Map<String, int>>(
+                future: countsFuture,
+                builder: (context, snapshot) {
+                  final total = snapshot.hasData
+                      ? snapshot.data!.values
+                            .fold<int>(0, (sum, n) => sum + n)
+                            .toString()
+                      : '--';
+                  return _StatCard(
+                    title: 'Canjes',
+                    value: total,
+                    icon: Icons.qr_code_2,
+                    iconBg: PromoColors.statPurpleBg,
+                    iconTint: PromoColors.statPurpleIcon,
+                  );
+                },
               ),
             ),
             const SizedBox(width: 14),

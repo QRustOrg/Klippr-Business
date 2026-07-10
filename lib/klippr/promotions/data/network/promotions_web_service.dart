@@ -1,7 +1,6 @@
 import '../../../shared/data/network/api_client.dart';
 import '../../../shared/data/network/result.dart';
 import 'requests/create_promotion_request.dart';
-import 'requests/publish_request.dart';
 import 'requests/update_promotion_request.dart';
 
 // author: Samuel Bonifacio
@@ -41,8 +40,7 @@ class PromotionsWebService {
   Future<Result<dynamic>> delete(String id) => _api.delete('$_base/$id');
 
   /// Publica una promoción.
-  Future<Result<dynamic>> publish(String id, PublishRequest body) =>
-      _api.post('$_base/$id/publish', body: body.toJson());
+  Future<Result<dynamic>> publish(String id) => _api.post('$_base/$id/publish');
 
   /// Cancela una promoción.
   Future<Result<dynamic>> cancel(String id) => _api.post('$_base/$id/cancel');

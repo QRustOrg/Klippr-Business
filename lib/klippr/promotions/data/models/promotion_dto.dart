@@ -13,6 +13,7 @@ class PromotionDto {
   const PromotionDto({
     required this.id,
     required this.businessId,
+    required this.businessName,
     required this.title,
     required this.description,
     required this.discountAmount,
@@ -27,6 +28,7 @@ class PromotionDto {
 
   final String id;
   final String businessId;
+  final String businessName;
   final String title;
   final String description;
   final double discountAmount;
@@ -43,6 +45,7 @@ class PromotionDto {
     return PromotionDto(
       id: json['id'] as String? ?? '',
       businessId: json['businessId'] as String? ?? '',
+      businessName: json['businessName'] as String? ?? '',
       title: json['title'] as String? ?? '',
       description: json['description'] as String? ?? '',
       discountAmount: (json['discountAmount'] as num?)?.toDouble() ?? 0,
@@ -50,10 +53,30 @@ class PromotionDto {
       startDate: json['startDate'] as String?,
       endDate: json['endDate'] as String?,
       redemptionCap: (json['redemptionCap'] as num?)?.toInt(),
-      imageKey: json['imageKey'] as String?,
-      status: json['status'] as String? ?? '',
-      isActive: json['isActive'] as bool? ?? false,
+      imageKey: _readImageKey(json),
+      status: json['status'] as String? ?? json['Status']?.toString() ?? '',
+      isActive: json['isActive'] as bool? ?? json['IsActive'] as bool? ?? false,
     );
+  }
+
+  /// Acepta imageKey / ImageKey / promotionImage / etc. del body del GET.
+  static String? _readImageKey(Map<String, dynamic> json) {
+    const candidates = <String>[
+      'imageKey',
+      'ImageKey',
+      'image_key',
+      'promotionImage',
+      'PromotionImage',
+      'image',
+      'Image',
+    ];
+    for (final field in candidates) {
+      final raw = json[field];
+      if (raw == null) continue;
+      final text = raw.toString().trim();
+      if (text.isNotEmpty && text.toLowerCase() != 'null') return text;
+    }
+    return null;
   }
 
   /// Proyecta este DTO a la entidad de dominio pura [Promotion].
@@ -61,6 +84,7 @@ class PromotionDto {
     return Promotion(
       id: Id(id),
       businessId: Id(businessId),
+      businessName: businessName,
       title: title,
       description: description,
       discountAmount: discountAmount,
@@ -97,7 +121,7 @@ class PromotionDto {
 extension DiscountTypeApi on DiscountType {
   /// Valor exacto que espera el backend en el body.
   String get api => switch (this) {
-        DiscountType.percentage => 'PERCENTAGE',
-        DiscountType.fixed => 'FIXED',
-      };
+    DiscountType.percentage => 'PERCENTAGE',
+    DiscountType.fixed => 'FIXED',
+  };
 }
