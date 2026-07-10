@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../shared/data/pref/prefs_helper.dart';
+import '../../../shared/data/pref/session_identity.dart';
 import '../../../promotions/presentation/navigation/promotions_router.dart';
 import '../navigation/iam_router.dart';
 import 'auth_colors.dart';
@@ -8,7 +9,7 @@ import 'auth_colors.dart';
 // author: Samuel Bonifacio
 //
 // Pantalla de splash que verifica si existe una sesión activa (token guardado).
-// Si hay token, navega directamente al BusinessHomeScreen.
+// Si hay token + userId (o se puede recuperar del JWT), navega al home.
 // Si no hay token o el recordado está vacío, navega al SignInScreen.
 
 /// Splash que restaura la sesión si hay token válido.
@@ -32,17 +33,25 @@ class _SplashSessionScreenState extends State<SplashSessionScreen> {
 
     final prefs = PrefsHelper.instance;
     final token = prefs.token;
-    final hasRemembered = prefs.rememberMe;
 
     if (!mounted) return;
 
     if (token != null && token.isNotEmpty) {
-      Navigator.of(context).pushReplacement(PromotionsRouter.home());
-    } else if (hasRemembered) {
+      // Sin userId el home lista promos vacías ("Sesion no disponible").
+      final userId = await SessionIdentity.ensureUserId(prefs);
+      if (!mounted) return;
+      if (userId != null && userId.isNotEmpty) {
+        Navigator.of(context).pushReplacement(PromotionsRouter.home());
+        return;
+      }
+      // Token huérfano: forzar re-login para rehidratar userId.
+      await prefs.clearToken();
+      if (!mounted) return;
       Navigator.of(context).pushReplacement(IamRouter.signIn());
-    } else {
-      Navigator.of(context).pushReplacement(IamRouter.signIn());
+      return;
     }
+
+    Navigator.of(context).pushReplacement(IamRouter.signIn());
   }
 
   @override

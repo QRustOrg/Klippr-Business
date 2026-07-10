@@ -76,10 +76,7 @@ class _FakePromotionsStore implements PromotionsStore {
   Future<Result<void>> delete(String id) async => const Success(null);
 
   @override
-  Future<Result<void>> publish(
-    String id, {
-    bool isBusinessVerified = true,
-  }) async => const Success(null);
+  Future<Result<void>> publish(String id) async => const Success(null);
 
   @override
   Future<Result<void>> cancel(String id) async => const Success(null);

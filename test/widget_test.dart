@@ -268,8 +268,7 @@ class _FakeAnalyticsRepository extends AnalyticsRepository {
   Future<Result<int>> loadPromotionRedemptions(
     String businessId,
     String promotionId,
-  ) async =>
-      const Success(12);
+  ) async => const Success(12);
 }
 
 Promotion _promotion({
@@ -359,10 +358,7 @@ class _FakePromotionsRepository extends PromotionsRepository {
   Future<Result<void>> delete(String id) async => const Success(null);
 
   @override
-  Future<Result<void>> publish(
-    String id, {
-    bool isBusinessVerified = true,
-  }) async {
+  Future<Result<void>> publish(String id) async {
     publishCalls += 1;
     return const Success(null);
   }

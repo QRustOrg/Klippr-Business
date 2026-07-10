@@ -51,7 +51,7 @@ abstract interface class PromotionsStore {
   Future<Result<void>> delete(String id);
 
   /// Publica una promoción.
-  Future<Result<void>> publish(String id, {bool isBusinessVerified = true});
+  Future<Result<void>> publish(String id);
 
   /// Cancela una promoción.
   Future<Result<void>> cancel(String id);

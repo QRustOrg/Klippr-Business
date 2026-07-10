@@ -30,16 +30,16 @@ class CreatePromotionRequest {
   final int? redemptionCap;
 
   Map<String, dynamic> toJson() => {
-        'businessId': businessId,
-        'title': title,
-        'description': description,
-        'discountAmount': discountAmount,
-        'discountType': discountType.api,
-        'startDate': startDate.toUtc().toIso8601String(),
-        'endDate': endDate.toUtc().toIso8601String(),
-        'imageKey': imageKey,
-        if (redemptionCap != null) 'redemptionCap': redemptionCap,
-      };
+    'businessId': businessId,
+    'title': title,
+    'description': description,
+    'discountAmount': discountAmount,
+    'discountType': discountType.api,
+    'startDate': startDate.toUtc().toIso8601String(),
+    'endDate': endDate.toUtc().toIso8601String(),
+    'imageKey': imageKey,
+    if (redemptionCap != null) 'redemptionCap': redemptionCap,
+  };
 }
 
 /// Cuerpo de PUT /api/promotions/{id} (igual a crear, sin businessId).
@@ -65,22 +65,13 @@ class UpdatePromotionRequest {
   final int? redemptionCap;
 
   Map<String, dynamic> toJson() => {
-        'title': title,
-        'description': description,
-        'discountAmount': discountAmount,
-        'discountType': discountType.api,
-        'startDate': startDate.toUtc().toIso8601String(),
-        'endDate': endDate.toUtc().toIso8601String(),
-        'imageKey': imageKey,
-        if (redemptionCap != null) 'redemptionCap': redemptionCap,
-      };
-}
-
-/// Cuerpo de POST /api/promotions/{id}/publish.
-class PublishRequest {
-  const PublishRequest({required this.isBusinessVerified});
-
-  final bool isBusinessVerified;
-
-  Map<String, dynamic> toJson() => {'isBusinessVerified': isBusinessVerified};
+    'title': title,
+    'description': description,
+    'discountAmount': discountAmount,
+    'discountType': discountType.api,
+    'startDate': startDate.toUtc().toIso8601String(),
+    'endDate': endDate.toUtc().toIso8601String(),
+    'imageKey': imageKey,
+    if (redemptionCap != null) 'redemptionCap': redemptionCap,
+  };
 }

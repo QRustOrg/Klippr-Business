@@ -251,6 +251,11 @@ class _FakeAnalyticsStore implements AnalyticsStore {
   ) async => const Success(9);
 
   @override
+  Future<Result<Map<String, int>>> loadPromotionRedemptionCounts(
+    String businessId,
+  ) async => const Success({'promo-1': 9});
+
+  @override
   Future<Result<CampaignMetrics>> loadCampaignMetrics(
     String campaignId,
   ) async => Success(
@@ -327,10 +332,7 @@ class _FakePromotionsStore implements PromotionsStore {
   Future<Result<void>> delete(String id) async => const Success(null);
 
   @override
-  Future<Result<void>> publish(
-    String id, {
-    bool isBusinessVerified = true,
-  }) async => const Success(null);
+  Future<Result<void>> publish(String id) async => const Success(null);
 
   @override
   Future<Result<void>> cancel(String id) async => const Success(null);

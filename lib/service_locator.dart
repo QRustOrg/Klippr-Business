@@ -31,10 +31,12 @@ abstract final class ServiceLocator {
 
     // Bounded contexts (cada uno depende solo de la infraestructura compartida).
     IamDependencies.register(sl);
+    // Profile antes de Promotions: el store de promos resuelve profileId
+    // (el backend indexa promociones por BusinessProfile.Id).
+    ProfileDependencies.register(sl);
     PromotionsDependencies.register(sl);
     RedemptionDependencies.register(sl);
     AnalyticsDependencies.register(sl);
-    ProfileDependencies.register(sl);
     registerAdminDependencies(sl);
   }
 }

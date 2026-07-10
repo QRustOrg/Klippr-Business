@@ -4,6 +4,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:klippr/klippr/analytics/domain/stores/analytics_store.dart';
 import 'package:klippr/klippr/analytics/domain/models/business_dashboard_metrics.dart';
 import 'package:klippr/klippr/analytics/models/campaign_metrics.dart';
+import 'package:klippr/klippr/profile/application/bloc/profile_bloc.dart';
+import 'package:klippr/klippr/profile/domain/models/business_profile.dart';
+import 'package:klippr/klippr/profile/domain/models/business_profile_update.dart';
+import 'package:klippr/klippr/profile/domain/models/verification_document.dart';
+import 'package:klippr/klippr/profile/domain/stores/profile_store.dart';
 import 'package:klippr/klippr/promotions/application/bloc/promotions_bloc.dart';
 import 'package:klippr/klippr/promotions/domain/models/promotion.dart';
 import 'package:klippr/klippr/promotions/domain/stores/promotions_store.dart';
@@ -37,6 +42,50 @@ void main() {
       find.text('Tus promos tienen 17 canjes hasta la fecha'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('unverified business cannot send publish request', (
+    tester,
+  ) async {
+    final store = _TrackingPromotionsStore([
+      _promotion(
+        id: 'promo-1',
+        title: 'Promo borrador',
+      ).copyWith(status: PromotionStatus.draft, isActive: false),
+    ]);
+    final profileBloc = ProfileBloc(_UnverifiedProfileStore());
+
+    await tester.pumpWidget(
+      MultiBlocProvider(
+        providers: [
+          BlocProvider(create: (_) => PromotionsBloc(store)),
+          BlocProvider.value(value: profileBloc),
+        ],
+        child: MaterialApp(
+          home: BusinessHomeScreen(
+            analyticsStore: const _FakeAnalyticsStore({}),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(profileBloc.state.profile?.isVerified, isFalse);
+
+    final publish = find.ancestor(
+      of: find.byIcon(Icons.publish_outlined),
+      matching: find.byType(IconButton),
+    );
+    await tester.scrollUntilVisible(publish, 120);
+    tester.widget<IconButton>(publish).onPressed!();
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        'Tu negocio debe estar verificado antes de publicar promociones.',
+      ),
+      findsOneWidget,
+    );
+    expect(store.publishCalls, 0);
   });
 }
 
@@ -100,13 +149,44 @@ class _FakePromotionsStore implements PromotionsStore {
   Future<Result<void>> delete(String id) async => const Success(null);
 
   @override
-  Future<Result<void>> publish(
-    String id, {
-    bool isBusinessVerified = true,
-  }) async => const Success(null);
+  Future<Result<void>> publish(String id) async => const Success(null);
 
   @override
   Future<Result<void>> cancel(String id) async => const Success(null);
+}
+
+class _TrackingPromotionsStore extends _FakePromotionsStore {
+  _TrackingPromotionsStore(super.promotions);
+
+  int publishCalls = 0;
+
+  @override
+  Future<Result<void>> publish(String id) async {
+    publishCalls++;
+    return const Success(null);
+  }
+}
+
+class _UnverifiedProfileStore implements ProfileStore {
+  @override
+  Future<Result<BusinessProfile>> loadBusinessProfile() async => Success(
+    BusinessProfile(
+      id: const Id('profile-1'),
+      userId: const Id('business-1'),
+      businessName: 'Negocio',
+      verificationStatus: 'NONE',
+    ),
+  );
+
+  @override
+  Future<Result<BusinessProfile>> updateBusinessProfile(
+    BusinessProfileUpdate update,
+  ) async => loadBusinessProfile();
+
+  @override
+  Future<Result<void>> submitVerification(
+    VerificationDocument document,
+  ) async => const Success(null);
 }
 
 class _FakeAnalyticsStore implements AnalyticsStore {
@@ -134,6 +214,11 @@ class _FakeAnalyticsStore implements AnalyticsStore {
     String businessId,
     String promotionId,
   ) async => Success(counts[promotionId] ?? 0);
+
+  @override
+  Future<Result<Map<String, int>>> loadPromotionRedemptionCounts(
+    String businessId,
+  ) async => Success(Map<String, int>.from(counts));
 
   @override
   Future<Result<CampaignMetrics>> loadCampaignMetrics(
