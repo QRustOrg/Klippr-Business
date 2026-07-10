@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../profile/domain/models/verification_document_template.dart';
 import '../../../promotions/presentation/views/promo_colors.dart';
 import '../../application/bloc/admin_bloc.dart';
 import '../../application/bloc/admin_event.dart';
@@ -163,18 +164,41 @@ class AdminVerificationsScreen extends StatelessWidget {
   }
 
   void _showDocumentDialog(BuildContext context, AdminBusinessProfile profile) {
+    final summary = VerificationDocumentTemplate.parseDocumentUrl(
+      profile.documentUrl,
+    );
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Documento de Verificación'),
+        title: const Text('Documento de verificación'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('URL del documento:'),
-            const SizedBox(height: 8),
+            Text(
+              summary.isTemplate ? 'Plantilla enviada por el negocio' : 'Documento',
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                color: PromoColors.textDark,
+              ),
+            ),
+            const SizedBox(height: 10),
+            _DocInfoRow('Tipo', summary.typeLabel),
+            _DocInfoRow('Negocio', summary.businessName ?? profile.businessName),
+            if ((summary.taxId ?? profile.taxId)?.isNotEmpty == true)
+              _DocInfoRow('RUC', summary.taxId ?? profile.taxId!),
+            if ((summary.email ?? profile.email)?.isNotEmpty == true)
+              _DocInfoRow('Email', summary.email ?? profile.email!),
+            if ((summary.category ?? profile.category)?.isNotEmpty == true)
+              _DocInfoRow('Categoría', summary.category ?? profile.category!),
+            const SizedBox(height: 10),
+            const Text(
+              'documentUrl',
+              style: TextStyle(fontSize: 12, color: PromoColors.textGray),
+            ),
+            const SizedBox(height: 4),
             SelectableText(
-              profile.documentUrl ?? 'No disponible',
+              summary.url ?? profile.documentUrl ?? 'No disponible',
               style: const TextStyle(fontSize: 12),
             ),
           ],
@@ -294,8 +318,26 @@ class _VerificationCard extends StatelessWidget {
                 color: PromoColors.textDark,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 4),
           ],
+          Builder(
+            builder: (context) {
+              final summary = VerificationDocumentTemplate.parseDocumentUrl(
+                profile.documentUrl,
+              );
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Text(
+                  'Documento: ${summary.typeLabel}',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: PromoColors.purpleText,
+                  ),
+                ),
+              );
+            },
+          ),
           Row(
             children: [
               Expanded(
@@ -339,8 +381,52 @@ class _VerificationCard extends StatelessWidget {
   }
 
   String _initials(String value) {
-    final parts = value.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    final parts = value
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((p) => p.isNotEmpty)
+        .toList();
     if (parts.isEmpty) return '?';
     return parts.take(2).map((p) => p[0].toUpperCase()).join();
+  }
+}
+
+class _DocInfoRow extends StatelessWidget {
+  const _DocInfoRow(this.label, this.value);
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 90,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                color: PromoColors.textGray,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 13,
+                color: PromoColors.textDark,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

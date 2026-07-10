@@ -22,4 +22,11 @@ class ProfileWebService {
 
   Future<Result<dynamic>> getUser(String userId) =>
       _api.get('/api/Users/$userId');
+
+  /// Lista promociones de un negocio (sirve para descubrir businessId/profileId).
+  Future<Result<dynamic>> getPromotionsByBusiness(String businessId) =>
+      _api.get('/api/promotions/businesses/$businessId');
+
+  /// Lista global de promociones (descubrimiento de profileId por nombre).
+  Future<Result<dynamic>> getAllPromotions() => _api.get('/api/promotions');
 }

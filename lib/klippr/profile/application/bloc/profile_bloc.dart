@@ -60,16 +60,38 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       ),
     );
     final res = await _store.submitVerification(event.document);
-    res.when(
-      onSuccess: (_) => emit(
+    if (res.errorOrNull != null) {
+      emit(
         state.copyWith(
           isSubmittingVerification: false,
-          verificationSubmitted: true,
-          actionMessage: 'Verificacion enviada.',
+          error: res.errorOrNull!.message,
         ),
-      ),
-      onFailure: (error) => emit(
-        state.copyWith(isSubmittingVerification: false, error: error.message),
+      );
+      return;
+    }
+
+    // Releer perfil para persistir visualmente Pending/Verified del backend.
+    final reload = await _store.loadBusinessProfile();
+    final profile = reload.dataOrNull ?? state.profile;
+    final refreshed = profile == null
+        ? null
+        : profile.copyWith(
+            verificationStatus:
+                (profile.verificationStatus == null ||
+                    profile.verificationStatus!.trim().isEmpty ||
+                    profile.verificationStatus!.toLowerCase() == 'none')
+                ? 'Pending'
+                : profile.verificationStatus,
+            documentUrl: event.document.documentUrl,
+          );
+
+    emit(
+      state.copyWith(
+        isSubmittingVerification: false,
+        verificationSubmitted: true,
+        profile: refreshed,
+        actionMessage: 'Verificacion enviada. El admin la revisara pronto.',
+        error: null,
       ),
     );
   }
