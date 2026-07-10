@@ -53,10 +53,30 @@ class PromotionDto {
       startDate: json['startDate'] as String?,
       endDate: json['endDate'] as String?,
       redemptionCap: (json['redemptionCap'] as num?)?.toInt(),
-      imageKey: json['imageKey'] as String?,
-      status: json['status'] as String? ?? '',
-      isActive: json['isActive'] as bool? ?? false,
+      imageKey: _readImageKey(json),
+      status: json['status'] as String? ?? json['Status']?.toString() ?? '',
+      isActive: json['isActive'] as bool? ?? json['IsActive'] as bool? ?? false,
     );
+  }
+
+  /// Acepta imageKey / ImageKey / promotionImage / etc. del body del GET.
+  static String? _readImageKey(Map<String, dynamic> json) {
+    const candidates = <String>[
+      'imageKey',
+      'ImageKey',
+      'image_key',
+      'promotionImage',
+      'PromotionImage',
+      'image',
+      'Image',
+    ];
+    for (final field in candidates) {
+      final raw = json[field];
+      if (raw == null) continue;
+      final text = raw.toString().trim();
+      if (text.isNotEmpty && text.toLowerCase() != 'null') return text;
+    }
+    return null;
   }
 
   /// Proyecta este DTO a la entidad de dominio pura [Promotion].

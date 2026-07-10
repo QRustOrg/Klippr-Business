@@ -103,12 +103,59 @@ class PromotionImageCatalog {
     ),
   ];
 
+  /// Resuelve un asset local a partir de la key del backend.
+  ///
+  /// Si [key] es null/vacía o no existe en el catálogo, devuelve
+  /// [fallback] (`comida_hamburguesas`) — por eso se ven hamburguesas
+  /// cuando el GET no trae `imageKey` o trae un valor desconocido.
   static PromotionImageOption byKey(String? key) {
-    if (key == null || key.trim().isEmpty) return fallback;
+    final normalized = normalizeKey(key);
+    if (normalized == null) return fallback;
+
     for (final option in options) {
-      if (option.key == key) return option;
+      if (option.key == normalized) return option;
+    }
+    // Match flexible: paths, casing o subcadenas ("pizza", "comida_pizza.png").
+    for (final option in options) {
+      final optionKey = option.key;
+      if (normalized.contains(optionKey) || optionKey.contains(normalized)) {
+        return option;
+      }
     }
     return fallback;
+  }
+
+  /// Normaliza una key cruda del backend (path, extensión, casing).
+  static String? normalizeKey(String? key) {
+    if (key == null) return null;
+    var value = key.trim();
+    if (value.isEmpty || value.toLowerCase() == 'null') return null;
+    if (value.contains('/')) value = value.split('/').last;
+    if (value.contains(r'\')) value = value.split(r'\').last;
+    final dot = value.lastIndexOf('.');
+    if (dot > 0) value = value.substring(0, dot);
+    value = value.trim().toLowerCase();
+    return value.isEmpty ? null : value;
+  }
+
+  /// Lee imageKey desde varias formas del JSON del backend.
+  static String? readKeyFromJson(Map<String, dynamic> json) {
+    const candidates = <String>[
+      'imageKey',
+      'ImageKey',
+      'image_key',
+      'promotionImage',
+      'PromotionImage',
+      'image',
+      'Image',
+    ];
+    for (final field in candidates) {
+      final raw = json[field];
+      if (raw == null) continue;
+      final text = raw.toString().trim();
+      if (text.isNotEmpty && text.toLowerCase() != 'null') return text;
+    }
+    return null;
   }
 
   static List<PromotionImageOption> byCategory(String categoryKey) {
