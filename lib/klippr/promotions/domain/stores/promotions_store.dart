@@ -19,6 +19,9 @@ abstract interface class PromotionsStore {
   /// Carga solo las promociones activas del negocio autenticado.
   Future<Result<List<Promotion>>> loadActiveMine();
 
+  /// Carga las promociones activas de todos los negocios.
+  Future<Result<List<Promotion>>> loadActive();
+
   /// Obtiene una promoción fresca por id (usado antes de abrir edición).
   Future<Result<Promotion>> getById(String id);
 

@@ -88,18 +88,27 @@ class HttpPromotionsStore implements PromotionsStore {
   }
 
   @override
+  Future<Result<List<Promotion>>> loadActive() async {
+    final res = await _service.getActive();
+    return res.when(
+      onSuccess: (json) => Success<List<Promotion>>(_toPromotionList(json)),
+      onFailure: (e) => Failure<List<Promotion>>(e),
+    );
+  }
+
+  @override
   Future<Result<List<Promotion>>> loadActiveMine() async {
     final ids = await _lookupBusinessIds();
     if (ids.isEmpty) {
       return const Failure(UnauthorizedException('Sesion no disponible.'));
     }
     final idSet = ids.toSet();
-    final res = await _service.getActive();
+    final res = await loadActive();
     return res.when(
-      onSuccess: (json) {
-        final active = _toPromotionList(
-          json,
-        ).where((p) => idSet.contains(p.businessId.value)).toList();
+      onSuccess: (promotions) {
+        final active = promotions
+            .where((p) => idSet.contains(p.businessId.value))
+            .toList();
         return Success<List<Promotion>>(active);
       },
       onFailure: (e) => Failure<List<Promotion>>(e),
