@@ -86,20 +86,7 @@ class HttpProfileStore implements ProfileStore {
         }
         return loadBusinessProfile();
       },
-      onFailure: (error) async {
-        final loadRes = await loadBusinessProfile();
-        return loadRes.when(
-          onSuccess: (profile) {
-            if (error.message.contains('404') || error.message.contains('not found')) {
-              return Failure<BusinessProfile>(
-                ApiException.fromStatus(404, 'Perfil no encontrado. Intenta cerrar sesión y volver a entrar.'),
-              );
-            }
-            return Success<BusinessProfile>(profile);
-          },
-          onFailure: (_) => Failure<BusinessProfile>(error),
-        );
-      },
+      onFailure: (error) => Failure<BusinessProfile>(error),
     );
   }
 

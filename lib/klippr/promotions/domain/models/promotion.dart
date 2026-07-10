@@ -13,9 +13,9 @@ enum DiscountType {
 
   /// Etiqueta del descuento ("50% OFF" / "S/ 10 OFF").
   String label(double amount) => switch (this) {
-        DiscountType.percentage => '${amount.toStringAsFixed(0)}% OFF',
-        DiscountType.fixed => 'S/ ${amount.toStringAsFixed(0)} OFF',
-      };
+    DiscountType.percentage => '${amount.toStringAsFixed(0)}% OFF',
+    DiscountType.fixed => 'S/ ${amount.toStringAsFixed(0)} OFF',
+  };
 }
 
 /// Estado del ciclo de vida de una promoción.
@@ -28,12 +28,12 @@ enum PromotionStatus {
 
   /// Etiqueta legible en español.
   String get label => switch (this) {
-        PromotionStatus.draft => 'Borrador',
-        PromotionStatus.published => 'Publicada',
-        PromotionStatus.cancelled => 'Cancelada',
-        PromotionStatus.expired => 'Expirada',
-        PromotionStatus.unknown => '—',
-      };
+    PromotionStatus.draft => 'Borrador',
+    PromotionStatus.published => 'Publicada',
+    PromotionStatus.cancelled => 'Cancelada',
+    PromotionStatus.expired => 'Expirada',
+    PromotionStatus.unknown => '—',
+  };
 }
 
 /// Promoción de un negocio.
@@ -42,6 +42,7 @@ class Promotion {
   const Promotion({
     required this.id,
     required this.businessId,
+    this.businessName = '',
     required this.title,
     required this.description,
     required this.discountAmount,
@@ -56,6 +57,7 @@ class Promotion {
 
   final Id id;
   final Id businessId;
+  final String businessName;
   final String title;
   final String description;
   final double discountAmount;
@@ -79,6 +81,7 @@ class Promotion {
   Promotion copyWith({
     Id? id,
     Id? businessId,
+    String? businessName,
     String? title,
     String? description,
     double? discountAmount,
@@ -93,6 +96,7 @@ class Promotion {
     return Promotion(
       id: id ?? this.id,
       businessId: businessId ?? this.businessId,
+      businessName: businessName ?? this.businessName,
       title: title ?? this.title,
       description: description ?? this.description,
       discountAmount: discountAmount ?? this.discountAmount,
@@ -112,6 +116,7 @@ class Promotion {
     return other is Promotion &&
         other.id == id &&
         other.businessId == businessId &&
+        other.businessName == businessName &&
         other.title == title &&
         other.description == description &&
         other.discountAmount == discountAmount &&
@@ -126,17 +131,18 @@ class Promotion {
 
   @override
   int get hashCode => Object.hash(
-        id,
-        businessId,
-        title,
-        description,
-        discountAmount,
-        discountType,
-        startDate,
-        endDate,
-        redemptionCap,
-        imageKey,
-        status,
-        isActive,
-      );
+    id,
+    businessId,
+    businessName,
+    title,
+    description,
+    discountAmount,
+    discountType,
+    startDate,
+    endDate,
+    redemptionCap,
+    imageKey,
+    status,
+    isActive,
+  );
 }

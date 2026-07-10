@@ -13,6 +13,7 @@ class PromotionDto {
   const PromotionDto({
     required this.id,
     required this.businessId,
+    required this.businessName,
     required this.title,
     required this.description,
     required this.discountAmount,
@@ -27,6 +28,7 @@ class PromotionDto {
 
   final String id;
   final String businessId;
+  final String businessName;
   final String title;
   final String description;
   final double discountAmount;
@@ -43,6 +45,7 @@ class PromotionDto {
     return PromotionDto(
       id: json['id'] as String? ?? '',
       businessId: json['businessId'] as String? ?? '',
+      businessName: json['businessName'] as String? ?? '',
       title: json['title'] as String? ?? '',
       description: json['description'] as String? ?? '',
       discountAmount: (json['discountAmount'] as num?)?.toDouble() ?? 0,
@@ -61,6 +64,7 @@ class PromotionDto {
     return Promotion(
       id: Id(id),
       businessId: Id(businessId),
+      businessName: businessName,
       title: title,
       description: description,
       discountAmount: discountAmount,
@@ -97,7 +101,7 @@ class PromotionDto {
 extension DiscountTypeApi on DiscountType {
   /// Valor exacto que espera el backend en el body.
   String get api => switch (this) {
-        DiscountType.percentage => 'PERCENTAGE',
-        DiscountType.fixed => 'FIXED',
-      };
+    DiscountType.percentage => 'PERCENTAGE',
+    DiscountType.fixed => 'FIXED',
+  };
 }

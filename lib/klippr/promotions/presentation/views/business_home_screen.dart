@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../analytics/data/network/analytics_web_service.dart';
 import '../../../analytics/data/stores/http_analytics_store.dart';
 import '../../../analytics/domain/stores/analytics_store.dart';
+import '../../../community/presentation/views/reviews_performance_screen.dart';
 import '../../../profile/application/bloc/profile_bloc.dart';
 import '../../../profile/application/bloc/profile_event.dart';
 import '../../../profile/presentation/navigation/profile_router.dart';
@@ -168,6 +169,15 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen>
     if (mounted) await _refreshDashboard();
   }
 
+  Future<void> _openReviews() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ReviewsPerformanceScreen(profileId: _safeBusinessId()),
+      ),
+    );
+    if (mounted) await _refreshDashboard();
+  }
+
   Future<bool> _confirm(String title, String message) async {
     final ok = await showDialog<bool>(
       context: context,
@@ -253,6 +263,17 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen>
                         ),
                         const SizedBox(height: 16),
                         _statsGrid(state, countsFuture),
+                        const SizedBox(height: 12),
+                        OutlinedButton.icon(
+                          onPressed: _openReviews,
+                          icon: const Icon(Icons.reviews_outlined),
+                          label: const Text('Rendimiento y reseñas'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: PromoColors.purple,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            side: const BorderSide(color: PromoColors.purple),
+                          ),
+                        ),
                         const SizedBox(height: 16),
                         _SuggestedPromoCard(onCreate: () => _openCreate()),
                         const SizedBox(height: 16),
